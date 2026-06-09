@@ -2829,8 +2829,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </button>
         </div>
 
-        {/* Footer attribution — bản quyền sản phẩm thuộc về công ty ARTIUS */}
-        <p className="mt-10 text-center text-[10px] leading-relaxed" style={{ color: C.textDim }}>
+        {/* Footer attribution */}
+        <p className="mt-10 text-center text-[12px] leading-relaxed" style={{ color: C.textDim }}>
           <a
             href="https://artius.vn/"
             target="_blank"
@@ -2842,7 +2842,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </a>
         </p>
 
-        <p className="mt-3 text-center" style={{ color: C.textFaint }}>
+        <p className="mt-0 text-center" style={{ color: C.textFaint }}>
           <span
             className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider"
             style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
