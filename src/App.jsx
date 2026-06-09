@@ -2547,7 +2547,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   <div className="mt-3 rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                     <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
                       <div>
-                        <span className="font-semibold" style={{ color: C.accentSoft }}>Ảnh được tạo</span>
+                        <span className="font-semibold" style={{ color: C.accentSoft }}>Image</span>
                       </div>
                       <button
                         onClick={renderImage}
@@ -2562,11 +2562,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                             : (<><ImageIcon className="w-4 h-4" /> Tạo ảnh</>)}
                       </button>
                     </div>
-
-                    <p className="text-xs mb-2.5" style={{ color: C.textDim }}>
-                      Tốn phí trên tài khoản OpenAI (không phải token Anthropic). Mỗi lần tạo 1 ảnh.
-                    </p>
-
+                    
                     {genStatus === "error" && genError && (
                       <div className="rounded-lg p-2.5 text-xs mb-2.5 whitespace-pre-wrap" style={{ background: `${C.neg}1a`, border: `1px solid ${C.neg}55`, color: C.neg }}>
                         {genError}
