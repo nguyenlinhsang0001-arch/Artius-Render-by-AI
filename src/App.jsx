@@ -1720,7 +1720,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     <button
       onClick={runActionBtn}
       disabled={actionBtnDisabled}
-      className="w-full inline-flex items-center justify-center gap-4 rounded-xl px-4 py-3 font-bold transition-all duration-200 disabled:opacity-40"
+      className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition-all duration-200 disabled:opacity-40"
       style={{ background: actionBtnBg, color: C.onAccent, boxShadow: `0 8px 22px -10px ${actionBtnBg}` }}
     >
       {actionBtnBusy
@@ -1930,7 +1930,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               để phân biệt. Tự đổi nhãn: chưa có prompt / cần phân tích lại -> "Phân tích &
               Tạo prompt"; chỉ đổi tham số nhẹ -> "Cập nhật kết quả". Bấm xong nhảy tab Kết quả. */}
           {/* NÚT HÀNH ĐỘNG — chỉ MOBILE ở thanh tab; desktop chuyển sang cột Kết quả */}
-          <div className="md:hidden mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
+          <div className="md:hidden mt-8 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
             {actionButton}
           </div>
 
