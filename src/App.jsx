@@ -1876,14 +1876,14 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         {/* ===== Header — DESKTOP (md+) : trái tiêu đề · phải logo trên + badge dưới ===== */}
         <div className="hidden md:flex items-start justify-between gap-3 mb-2 pt-2">
           {titleEl}
-          <div className="flex flex-col items-end gap-5 shrink-0">
+          <div className="flex flex-col items-end gap-15 shrink-0">
             {logoEl}
             {badgeEl}
           </div>
         </div>
 
         {/* ===== Header — MOBILE (<md) : dọc, căn giữa · logo → tiêu đề → badge ===== */}
-        <div className="flex md:hidden flex-col items-center gap-3 mb-2 pt-3">
+        <div className="flex md:hidden flex-col items-center gap-5 mb-2 pt-3">
           <div className="mb-7">{logoEl}</div>
           {titleEl}
           {badgeEl}
