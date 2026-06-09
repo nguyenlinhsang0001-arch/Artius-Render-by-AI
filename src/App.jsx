@@ -1583,7 +1583,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     ${analysisHtml}
 
     <footer>
-      Xuất từ <strong>Interior Render Prompt Agent</strong> · ${escapeHtml(new Date().toLocaleString("vi-VN"))}<br>
+      Xuất từ <strong>Interior Render Agent</strong> · ${escapeHtml(new Date().toLocaleString("vi-VN"))}<br>
       Sản phẩm thuộc <a href="https://artius.vn/" target="_blank" rel="noopener noreferrer">CÔNG TY THIẾT KẾ VÀ XÂY DỰNG ARTIUS</a>
     </footer>
   </div>
