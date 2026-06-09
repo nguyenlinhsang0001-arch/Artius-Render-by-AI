@@ -1720,7 +1720,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     <button
       onClick={runActionBtn}
       disabled={actionBtnDisabled}
-      className="w-full inline-flex items-center justify-center gap-5 rounded-xl px-4 py-3 font-bold transition-all duration-200 disabled:opacity-40"
+      className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition-all duration-200 disabled:opacity-40"
       style={{ background: actionBtnBg, color: C.onAccent, boxShadow: `0 8px 22px -10px ${actionBtnBg}` }}
     >
       {actionBtnBusy
@@ -2463,7 +2463,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 <span className="text-lg flex items-center gap-2 font-bold tracking-tight" style={{ color: C.text }}>
                   <Palette className="w-4 h-4" style={{ color: C.accent }} /> Điều Chỉnh Nâng Cao
                 </span>
-                <span className="text-[11px]" style={{ color: C.textDim }}>Sẽ sáng sau khi phân tích</span>
+                <span className="text-[11px]" style={{ color: C.textDim }}>Mở khóa chức năng sau khi bấm "Phân tích"</span>
               </div>
             )}
           </div>
@@ -2576,7 +2576,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
                     {genStatus === "generating" && (
                       <div className="rounded-xl flex items-center justify-center" style={{ aspectRatio: "16 / 10", background: C.inputBg, border: `1px dashed ${C.lineSoft}`, color: C.textDim }}>
-                        <span className="inline-flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> gpt-image-2 đang dựng ảnh…</span>
+                        <span className="inline-flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> đang dựng ảnh…</span>
                       </div>
                     )}
 
@@ -2831,8 +2831,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         </div>
 
         {/* Footer attribution — bản quyền sản phẩm thuộc về công ty ARTIUS */}
-        <p className="mt-10 text-center text-[4px] leading-relaxed" style={{ color: C.textDim }}>
-          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Prompt Agent”</strong><br />thuộc về{" "}
+        <p className="mt-10 text-center text-[8px] leading-relaxed" style={{ color: C.textDim }}>
+          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Agent”</strong><br />thuộc về{" "}
           <a
             href="https://artius.vn/"
             target="_blank"
@@ -2846,7 +2846,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
         <p className="mt-3 text-center" style={{ color: C.textFaint }}>
           <span
-            className="inline-block rounded-md px-2 py-0.5 text-[4px] tracking-wider"
+            className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider"
             style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
             title="Dấu mốc phiên bản — nếu vẫn thấy số cũ sau khi mở lại thì bạn đang xem bản cache"
           >
