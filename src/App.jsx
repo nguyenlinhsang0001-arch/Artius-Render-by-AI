@@ -2547,8 +2547,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   <div className="mt-3 rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                     <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
                       <div>
-                        <span className="font-semibold" style={{ color: C.accentSoft }}>Tạo ảnh thử · gpt-image-2</span>
-                        <span className="ml-2 text-xs" style={{ color: C.textDim }}>render từ MODEL + prompt Nano Banana</span>
+                        <span className="font-semibold" style={{ color: C.accentSoft }}>Ảnh được tạo</span>
                       </div>
                       <button
                         onClick={renderImage}
