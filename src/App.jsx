@@ -1876,7 +1876,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         {/* ===== Header — DESKTOP (md+) : trái tiêu đề · phải logo trên + badge dưới ===== */}
         <div className="hidden md:flex items-start justify-between gap-3 mb-2 pt-2">
           {titleEl}
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex flex-col items-end gap-5 shrink-0">
             {logoEl}
             {badgeEl}
           </div>
