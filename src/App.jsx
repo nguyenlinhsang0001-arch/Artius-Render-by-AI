@@ -1827,7 +1827,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   //  · "dự tính" = ước lượng (xấp xỉ) token cho LẦN GỌI API kế tiếp.
   const badgeEl = (
     <div
-      className="rounded-xl px-3 py-1 text-xs leading-tight"
+      className="rounded-xl px-3 py-1.2 text-xs leading-tight"
       style={{ background: `${C.panel}ee`, border: `1px solid ${C.accent}55`, color: C.text, fontFamily: MONO }}
       title={`Đã dùng: in ${usage.input.toLocaleString()} + out ${usage.output.toLocaleString()} qua ${usage.calls} API call. Dự tính cho lần ${estMode === "analyze" ? "Phân tích/Tạo (kèm ảnh nếu có)" : "Cập nhật prompt (text-only)"}: ~in ${estInput.toLocaleString()} + ~out ${estOutput.toLocaleString()}.`}
     >
@@ -1874,7 +1874,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
       <div className="w-full">
         {/* ===== Header — DESKTOP (md+) : trái tiêu đề · phải logo trên + badge dưới ===== */}
-        <div className="hidden md:flex items-start justify-between gap-3 mb-2 pt-2">
+        <div className="hidden md:flex items-start justify-between gap-5 mb-2 pt-2">
           {titleEl}
           <div className="flex flex-col items-end gap-2 shrink-0">
             {logoEl}
