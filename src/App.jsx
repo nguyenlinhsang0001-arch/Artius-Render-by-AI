@@ -515,7 +515,7 @@ function AnalysisRow({ k, label, i, enValue, onChangeEn }) {
         value={enValue}
         onChange={(e) => { onChangeEn(k, e.target.value); autosize(e.target); }}
         rows={2}
-        className="w-full text-sm rounded-lg px-2.5 py-1.5 leading-relaxed outline-none focus:ring-1 resize-none overflow-hidden"
+        className="max-w-10x1 text-sm rounded-lg px-2.5 py-1.5 leading-relaxed outline-none focus:ring-1 resize-none overflow-hidden"
         style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text, fontFamily: FONT }}
       />
     </div>
@@ -2832,7 +2832,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
         {/* Footer attribution — bản quyền sản phẩm thuộc về công ty ARTIUS */}
         <p className="mt-10 text-center text-[10px] leading-relaxed" style={{ color: C.textDim }}>
-          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Agent”</strong>thuộc về{" "}
+          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Agent”</strong><br />thuộc về{" "}
           <a
             href="https://artius.vn/"
             target="_blank"
