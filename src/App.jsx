@@ -1729,7 +1729,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           ? (<><AlertCircle className="w-5 h-5" /> Bấm lần nữa để xác nhận</>)
           : actionBtnReAnalyze
             ? (<><ImageIcon className="w-5 h-5" /> Phân tích &amp; Tạo prompt</>)
-            : (<><RefreshCw className="w-5 h-5" /> Cập nhật kết quả</>)}
+            : (<><RefreshCw className="w-5 h-5" /> Cập nhật thay đổi</>)}
     </button>
   );
 
@@ -1928,7 +1928,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
           {/* NÚT HÀNH ĐỘNG — "ô thứ 4" của thanh tab, kiểu KHÁC HẲN 3 tab (full-width, solid)
               để phân biệt. Tự đổi nhãn: chưa có prompt / cần phân tích lại -> "Phân tích &
-              Tạo prompt"; chỉ đổi tham số nhẹ -> "Cập nhật kết quả". Bấm xong nhảy tab Kết quả. */}
+              Tạo prompt"; chỉ đổi tham số nhẹ -> "Cập nhật thay đổi". Bấm xong nhảy tab Kết quả. */}
           {/* NÚT HÀNH ĐỘNG — chỉ MOBILE ở thanh tab; desktop chuyển sang cột Kết quả */}
           <div className="md:hidden mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
             {actionButton}
@@ -2517,7 +2517,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   <div className="mb-3 rounded-xl p-3 text-xs leading-snug" style={{ background: C.panel2, border: `1px solid ${C.neg}66`, color: C.accentSoft }}>
                     <div className="flex items-center gap-2 mb-2 font-semibold" style={{ color: C.neg }}>
                       {needsReanalyze ? <AlertCircle className="w-4 h-4 shrink-0" /> : <RefreshCw className="w-4 h-4 shrink-0" />}
-                      <span>Bấm “Cập nhật kết quả” sẽ áp dụng:</span>
+                      <span>Bấm “Cập nhật thay đổi” sẽ áp dụng:</span>
                     </div>
                     <ul className="space-y-1 mb-2">
                       {pendingChanges.map((c) => (
