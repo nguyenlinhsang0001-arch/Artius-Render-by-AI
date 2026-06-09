@@ -1867,7 +1867,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           .ipa-col-right {
             position: sticky; top: 0.5rem;
             max-height: calc(100vh - 1rem); overflow-y: auto;
-            padding-left: 1.5rem; border-left: 1px solid ${C.line};
+            padding-left: 1rem; border-left: 1px solid ${C.line};
           }
         }
       `}</style>
