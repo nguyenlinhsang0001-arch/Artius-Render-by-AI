@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Loader2, Copy, Check, Image as ImageIcon, Sparkles, AlertCircle, Palette, Box, Lock, Pencil, Move3d, Droplet, Layers, Maximize2, Ban, X, RefreshCw, Home, History, ChevronDown, ChevronLeft, ChevronRight, Shuffle, RotateCcw, Download } from "lucide-react";
-import { supabase } from "./supabaseClient";
 
 const PLATFORMS = [
   { id: "nanobanana", label: "ChatGPT (gpt-image)", hint: "" },
@@ -427,7 +426,7 @@ const MONO = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 // phụ thuộc file ngoài. Thay cho icon Sparkles ở header.
 const ARTIUS_LOGO = "data:image/png;base64,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";
 
-const APP_VERSION = "v28.0 · 09/06/2026";
+const APP_VERSION = "v27.4 · 09/06/2026";
 
 // =============================================================
 // API_URL — ĐIỂM GỌI API DUY NHẤT, đặt một chỗ để dễ đổi.
@@ -544,32 +543,6 @@ function StepLabel({ n, children }) {
 }
 
 export default function InteriorPromptAgent() {
-  // ===== AUTH (Supabase) — tài khoản nội bộ, bắt buộc đăng nhập =====
-  const [session, setSession] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPass, setLoginPass] = useState("");
-  const [loginErr, setLoginErr] = useState(null);
-  const [loginBusy, setLoginBusy] = useState(false);
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => setSession(sess));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-  async function doLogin() {
-    setLoginErr(null); setLoginBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail.trim(), password: loginPass });
-    if (error) setLoginErr("Email hoặc mật khẩu không đúng.");
-    setLoginBusy(false);
-  }
-  async function doLogout() { await supabase.auth.signOut(); }
-  // Gắn vào header MỌI call /api/* để server xác thực + tính quota.
-  async function authHeader() {
-    const { data } = await supabase.auth.getSession();
-    const t = data.session?.access_token;
-    return t ? { Authorization: `Bearer ${t}` } : {};
-  }
-
   // 2 ảnh đầu vào
   const [styleImg, setStyleImg] = useState(null);
   const [modelImg, setModelImg] = useState(null);
@@ -1075,11 +1048,7 @@ export default function InteriorPromptAgent() {
   function handleApiError(data) {
     if (!data || !data.error) return false;
     const t = data.error.type || "";
-    if (t === "quota_exceeded") {
-      setError(data.error.message || "Đã hết quota token cho tài khoản này.");
-    } else if (t === "auth") {
-      setError(data.error.message || "Phiên đăng nhập đã hết hạn. Đăng nhập lại.");
-    } else if (t.includes("rate_limit")) {
+    if (t.includes("rate_limit")) {
       setError("Bị giới hạn tần suất (rate limit). Đợi ~30s rồi thử lại.");
     } else if (t.includes("overloaded")) {
       setError("Hệ thống đang quá tải. Thử lại sau giây lát.");
@@ -1258,7 +1227,7 @@ Rules:
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 4096,
@@ -1348,7 +1317,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 1500,
@@ -1415,7 +1384,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     try {
       const response = await fetch(IMAGE_API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
+        headers: { "Content-Type": "application/json" },
         // size: ép đúng tỷ lệ người dùng đã chọn (aspectRatio). Fallback "auto"
         // nếu tỷ lệ lạ không có trong map.
         body: JSON.stringify({ model: "gpt-image-2", prompt, images, size: AR_TO_SIZE[aspectRatio] || "auto" }),
@@ -1424,9 +1393,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       let raw = "";
       try { raw = await response.text(); } catch { /* body rỗng */ }
       if (!response.ok) {
-        let msg = raw.slice(0, 300);
-        try { const j = JSON.parse(raw); if (j?.error?.message) msg = j.error.message; } catch { /* không phải JSON */ }
-        setGenError(`Lỗi tạo ảnh (HTTP ${response.status}). ${msg}`);
+        setGenError(`Lỗi tạo ảnh (HTTP ${response.status}). ${raw.slice(0, 300)}`);
         setGenStatus("error");
         return;
       }
@@ -1616,7 +1583,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     ${analysisHtml}
 
     <footer>
-      Xuất từ <strong>Interior Render Prompt Agent</strong> · ${escapeHtml(new Date().toLocaleString("vi-VN"))}<br>
+      Xuất từ <strong>Interior Render Agent</strong> · ${escapeHtml(new Date().toLocaleString("vi-VN"))}<br>
       Sản phẩm thuộc <a href="https://artius.vn/" target="_blank" rel="noopener noreferrer">CÔNG TY THIẾT KẾ VÀ XÂY DỰNG ARTIUS</a>
     </footer>
   </div>
@@ -1762,7 +1729,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           ? (<><AlertCircle className="w-5 h-5" /> Bấm lần nữa để xác nhận</>)
           : actionBtnReAnalyze
             ? (<><ImageIcon className="w-5 h-5" /> Phân tích &amp; Tạo prompt</>)
-            : (<><RefreshCw className="w-5 h-5" /> Cập nhật kết quả</>)}
+            : (<><RefreshCw className="w-5 h-5" /> Cập nhật thay đổi</>)}
     </button>
   );
 
@@ -1849,7 +1816,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       </div>
       <div>
         <h1 className="text-xl sm:text-2xl md:text-3xl leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: C.text }}>
-          Interior Render <span style={{ color: C.accent }}>Prompt Agent</span>
+          Interior Render <span style={{ color: C.text }}>Agent</span>
         </h1>
         <p className="text-[10px] sm:text-sm mt-1.5 whitespace-nowrap" style={{ color: C.textDim }}>Hút style từ ảnh mẫu · giữ góc nhìn theo ảnh mô hình</p>
       </div>
@@ -1878,66 +1845,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     </div>
   );
 
-  // Chip user + nút đăng xuất (hiện ở header khi đã đăng nhập).
-  const userEl = session && (
-    <div className="flex items-center gap-2 text-[11px]" style={{ color: C.textDim, fontFamily: MONO }}>
-      <span className="truncate max-w-[180px]">{session.user?.email}</span>
-      <button onClick={doLogout} className="rounded-md px-2 py-0.5 transition-colors" style={{ border: `1px solid ${C.line}`, color: C.accentSoft, background: "transparent" }}>Đăng xuất</button>
-    </div>
-  );
-
-  // ===== GATE đăng nhập: mọi hook ở trên đã chạy xong, giờ mới rẽ nhánh UI =====
-  if (!authReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg, color: C.text, fontFamily: FONT }}>
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: C.accent }} />
-      </div>
-    );
-  }
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT }}>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-        <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(145deg, ${C.accent}, ${C.accentDeep})` }}>
-              <Sparkles className="w-5 h-5" style={{ color: C.onAccent }} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold tracking-tight" style={{ color: C.text }}>Interior Render <span style={{ color: C.accent }}>Prompt Agent</span></h1>
-              <p className="text-[11px]" style={{ color: C.textDim }}>Đăng nhập để tiếp tục</p>
-            </div>
-          </div>
-          <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: C.accentSoft }}>Email</label>
-          <input
-            type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") doLogin(); }}
-            className="w-full text-sm rounded-lg px-3 py-2 mb-3 outline-none"
-            style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text }}
-            placeholder="ban@artius.vn"
-          />
-          <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: C.accentSoft }}>Mật khẩu</label>
-          <input
-            type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") doLogin(); }}
-            className="w-full text-sm rounded-lg px-3 py-2 mb-4 outline-none"
-            style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text }}
-            placeholder="••••••••"
-          />
-          {loginErr && <p className="text-xs mb-3" style={{ color: C.neg }}>{loginErr}</p>}
-          <button
-            onClick={doLogin} disabled={loginBusy || !loginEmail || !loginPass}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-bold transition-all disabled:opacity-40"
-            style={{ background: C.accent, color: C.onAccent }}
-          >
-            {loginBusy ? (<><Loader2 className="w-4 h-4 animate-spin" /> Đang đăng nhập…</>) : "Đăng nhập"}
-          </button>
-          <p className="text-[10px] mt-4 text-center" style={{ color: C.textFaint }}>Tài khoản do quản trị viên cấp.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen p-4 md:p-8 overflow-x-hidden" style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT }}>
       {/* Nạp font sans + mono (Plus Jakarta Sans hỗ trợ tiếng Việt) */}
@@ -1955,12 +1862,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-grid { margin-top: 1rem; }
         .ipa-col-left, .ipa-col-right { min-width: 0; }
         @media (min-width: 768px) {
-          .ipa-grid { display: grid; grid-template-columns: 7fr 5fr; gap: 2rem; align-items: start; }
+          .ipa-grid { display: grid; grid-template-columns: 7.5fr 4.5fr; gap: 1rem; align-items: start; }
           .ipa-col-left, .ipa-col-right { display: block !important; }
           .ipa-col-right {
             position: sticky; top: 0.5rem;
             max-height: calc(100vh - 1rem); overflow-y: auto;
-            padding-left: 1.5rem; border-left: 1px solid ${C.line};
+            padding-left: 1rem; border-left: 1px solid ${C.line};
           }
         }
       `}</style>
@@ -1969,19 +1876,17 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         {/* ===== Header — DESKTOP (md+) : trái tiêu đề · phải logo trên + badge dưới ===== */}
         <div className="hidden md:flex items-start justify-between gap-3 mb-2 pt-2">
           {titleEl}
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex flex-col items-end gap-5 shrink-0">
             {logoEl}
             {badgeEl}
-            {userEl}
           </div>
         </div>
 
         {/* ===== Header — MOBILE (<md) : dọc, căn giữa · logo → tiêu đề → badge ===== */}
-        <div className="flex md:hidden flex-col items-center gap-3 mb-2 pt-3">
+        <div className="flex md:hidden flex-col items-center gap-5 mb-2 pt-3">
           <div className="mb-7">{logoEl}</div>
           {titleEl}
           {badgeEl}
-          {userEl}
         </div>
 
 
@@ -1997,7 +1902,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           <div className="ipa-col-left">
 
         {/* ===== P1: THANH TAB (sticky) — Thiết lập | Kết quả ===== */}
-        <div className="sticky top-0 z-30 py-2 mb-2" style={{ background: "rgba(11,14,19,0.85)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+        <div className="sticky top-0 z-30 py-2 mb-2" style={{ background: "rgba(14,17,24,0)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <div className={`grid ${isDesktop ? "grid-cols-2" : "grid-cols-3"} gap-1.5 rounded-xl p-1`} style={{ background: C.panel2, border: `1px solid ${C.line}` }}>
             {[{ id: "src", label: "Nguồn & phong cách" }, { id: "cfg", label: "Thiết lập & điều chỉnh" }, { id: "result", label: "Kết quả" }]
               .filter((t) => !(isDesktop && t.id === "result")) // desktop: Kết quả là cột riêng -> ẩn nút tab
@@ -2023,11 +1928,37 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
           {/* NÚT HÀNH ĐỘNG — "ô thứ 4" của thanh tab, kiểu KHÁC HẲN 3 tab (full-width, solid)
               để phân biệt. Tự đổi nhãn: chưa có prompt / cần phân tích lại -> "Phân tích &
-              Tạo prompt"; chỉ đổi tham số nhẹ -> "Cập nhật kết quả". Bấm xong nhảy tab Kết quả. */}
+              Tạo prompt"; chỉ đổi tham số nhẹ -> "Cập nhật thay đổi". Bấm xong nhảy tab Kết quả. */}
           {/* NÚT HÀNH ĐỘNG — chỉ MOBILE ở thanh tab; desktop chuyển sang cột Kết quả */}
           <div className="md:hidden mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
             {actionButton}
           </div>
+
+          {/* THANH TIẾN TRÌNH (global) — luôn thấy bất kể đang ở tab nào. KHÔNG tốn token. */}
+          {progressActive && (
+            <div className="mt-2 ipa-anim" aria-live="polite">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-semibold" style={{ color: C.accentSoft }}>
+                  {status === "analyzing" ? "Đang phân tích ảnh & dựng cấu trúc…" : "Đang tạo lại prompt…"}
+                </span>
+                <span className="text-[11px] tabular-nums" style={{ color: C.textDim, fontFamily: MONO }}>
+                  {Math.round(progress)}%
+                </span>
+              </div>
+              <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: C.panel2, border: `1px solid ${C.line}` }}>
+                <div
+                  style={{
+                    width: `${progress}%`,
+                    height: "100%",
+                    borderRadius: 999,
+                    background: `linear-gradient(90deg, ${C.accent}, ${C.accentSoft})`,
+                    boxShadow: `0 0 12px -2px ${C.accent}`,
+                    transition: "width 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* LỖI (global) */}
           {error && (
@@ -2406,8 +2337,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             {/* ===== BƯỚC 3: NỀN TẢNG & KHUNG HÌNH ===== */}
             <StepLabel n={3}>Nền tảng &amp; khung hình</StepLabel>
 
-            {/* Tỷ lệ khung + Negative — desktop xếp cùng hàng (2 cột), mobile xếp dọc */}
-            <div className="grid md:grid-cols-2 gap-3 items-start">
+            {/* Tỷ lệ khung — full width (đã bỏ chọn nền tảng, mặc định ChatGPT/gpt-image) */}
+            <div>
               {/* Aspect ratio */}
               <div className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                 <p className="text-xs font-bold uppercase tracking-[0.14em] mb-2.5 inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
@@ -2433,9 +2364,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   {ASPECT_RATIOS.find((a) => a.value === aspectRatio)?.desc}
                 </p>
               </div>
+            </div>
 
-              {/* Negative prompt */}
-              <div className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+            {/* Negative prompt — full width */}
+            <div className="mt-3 rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
               <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
                   <Ban className="w-4 h-4" /> Negative prompt (cần tránh)
@@ -2456,7 +2388,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text, fontFamily: MONO, fontSize: "12.5px" }}
                 placeholder={NEGATIVE_BY_PLATFORM[platform] || DEFAULT_NEGATIVE}
               />
-              </div>
             </div>
 
             {/* Điều Chỉnh Nâng Cao — chuyển từ khu Kết quả sang Tab 2.
@@ -2532,7 +2463,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 <span className="text-lg flex items-center gap-2 font-bold tracking-tight" style={{ color: C.text }}>
                   <Palette className="w-4 h-4" style={{ color: C.accent }} /> Điều Chỉnh Nâng Cao
                 </span>
-                <span className="text-[11px]" style={{ color: C.textDim }}>Sẽ sáng sau khi phân tích</span>
+                <span className="text-[11px]" style={{ color: C.textDim }}>Mở khóa chức năng sau khi bấm "Phân tích"</span>
               </div>
             )}
           </div>
@@ -2542,33 +2473,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           {/* ===== CỘT PHẢI (desktop): KẾT QUẢ — luôn hiện trên desktop, CUỘN RIÊNG; mobile: hiện theo tab ===== */}
           <div className={(activeTab === "result" ? "" : "hidden ") + "ipa-col-right"}>
             {/* Desktop: NÚT HÀNH ĐỘNG nằm đầu cột Kết quả */}
-            <div className="hidden md:block mb-4">{actionButton}</div>
-
-            {/* THANH TIẾN TRÌNH — nằm trong cột Kết quả, ngay dưới nút hành động. KHÔNG tốn token. */}
-            {progressActive && (
-              <div className="mb-4 ipa-anim" aria-live="polite">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-semibold" style={{ color: C.accentSoft }}>
-                    {status === "analyzing" ? "Đang phân tích ảnh & dựng cấu trúc…" : "Đang tạo lại prompt…"}
-                  </span>
-                  <span className="text-[11px] tabular-nums" style={{ color: C.textDim, fontFamily: MONO }}>
-                    {Math.round(progress)}%
-                  </span>
-                </div>
-                <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: C.panel2, border: `1px solid ${C.line}` }}>
-                  <div
-                    style={{
-                      width: `${progress}%`,
-                      height: "100%",
-                      borderRadius: 999,
-                      background: `linear-gradient(90deg, ${C.accent}, ${C.accentSoft})`,
-                      boxShadow: `0 0 12px -2px ${C.accent}`,
-                      transition: "width 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+            <div className="hidden md:block mb-5 mt-2">{actionButton}</div>
             {/* 4d — SKELETON: trong lúc phân tích lần đầu, panel kết quả hiện các
                 dòng shimmer mô phỏng bố cục prompt sắp đổ vào (client-side, 0 token).
                 Rebuild (đã có prompt) giữ nguyên prompt cũ nên không cần skeleton. */}
@@ -2612,7 +2517,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   <div className="mb-3 rounded-xl p-3 text-xs leading-snug" style={{ background: C.panel2, border: `1px solid ${C.neg}66`, color: C.accentSoft }}>
                     <div className="flex items-center gap-2 mb-2 font-semibold" style={{ color: C.neg }}>
                       {needsReanalyze ? <AlertCircle className="w-4 h-4 shrink-0" /> : <RefreshCw className="w-4 h-4 shrink-0" />}
-                      <span>Bấm “Cập nhật kết quả” sẽ áp dụng:</span>
+                      <span>Bấm “Cập nhật thay đổi” sẽ áp dụng:</span>
                     </div>
                     <ul className="space-y-1 mb-2">
                       {pendingChanges.map((c) => (
@@ -2642,8 +2547,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   <div className="mt-3 rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                     <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
                       <div>
-                        <span className="font-semibold" style={{ color: C.accentSoft }}>Tạo ảnh thử · gpt-image-2</span>
-                        <span className="ml-2 text-xs" style={{ color: C.textDim }}>render từ MODEL + prompt Nano Banana</span>
+                        <span className="font-semibold" style={{ color: C.accentSoft }}>Image</span>
                       </div>
                       <button
                         onClick={renderImage}
@@ -2658,11 +2562,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                             : (<><ImageIcon className="w-4 h-4" /> Tạo ảnh</>)}
                       </button>
                     </div>
-
-                    <p className="text-xs mb-2.5" style={{ color: C.textDim }}>
-                      Tốn phí trên tài khoản OpenAI (không phải token Anthropic). Mỗi lần tạo 1 ảnh.
-                    </p>
-
+                    
                     {genStatus === "error" && genError && (
                       <div className="rounded-lg p-2.5 text-xs mb-2.5 whitespace-pre-wrap" style={{ background: `${C.neg}1a`, border: `1px solid ${C.neg}55`, color: C.neg }}>
                         {genError}
@@ -2671,7 +2571,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
                     {genStatus === "generating" && (
                       <div className="rounded-xl flex items-center justify-center" style={{ aspectRatio: "16 / 10", background: C.inputBg, border: `1px dashed ${C.lineSoft}`, color: C.textDim }}>
-                        <span className="inline-flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> gpt-image-2 đang dựng ảnh…</span>
+                        <span className="inline-flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> đang dựng ảnh…</span>
                       </div>
                     )}
 
@@ -2925,9 +2825,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </button>
         </div>
 
-        {/* Footer attribution — bản quyền sản phẩm thuộc về công ty ARTIUS */}
-        <p className="mt-10 text-center text-[4px] leading-relaxed" style={{ color: C.textDim }}>
-          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Prompt Agent”</strong><br />thuộc về{" "}
+        {/* Footer attribution */}
+        <p className="mt-10 text-center text-[12px] leading-relaxed" style={{ color: C.textDim }}>
           <a
             href="https://artius.vn/"
             target="_blank"
@@ -2939,9 +2838,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </a>
         </p>
 
-        <p className="mt-3 text-center" style={{ color: C.textFaint }}>
+        <p className="mt-0 text-center" style={{ color: C.textFaint }}>
           <span
-            className="inline-block rounded-md px-2 py-0.5 text-[4px] tracking-wider"
+            className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider"
             style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
             title="Dấu mốc phiên bản — nếu vẫn thấy số cũ sau khi mở lại thì bạn đang xem bản cache"
           >
