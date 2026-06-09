@@ -2846,7 +2846,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
         <p className="mt-3 text-center" style={{ color: C.textFaint }}>
           <span
-            className="inline-block rounded-md px-1 py-0.5 text-[6px] tracking-wider"
+            className="inline-block rounded-md px-4 py-0.5 text-[8px] tracking-wider"
             style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
             title="Dấu mốc phiên bản — nếu vẫn thấy số cũ sau khi mở lại thì bạn đang xem bản cache"
           >
