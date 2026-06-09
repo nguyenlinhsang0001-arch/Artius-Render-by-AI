@@ -1827,7 +1827,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   //  · "dự tính" = ước lượng (xấp xỉ) token cho LẦN GỌI API kế tiếp.
   const badgeEl = (
     <div
-      className="rounded-xl px-3 py-1.5 text-xs leading-tight"
+      className="rounded-xl px-3 py-5 text-xs leading-tight"
       style={{ background: `${C.panel}ee`, border: `1px solid ${C.accent}55`, color: C.text, fontFamily: MONO }}
       title={`Đã dùng: in ${usage.input.toLocaleString()} + out ${usage.output.toLocaleString()} qua ${usage.calls} API call. Dự tính cho lần ${estMode === "analyze" ? "Phân tích/Tạo (kèm ảnh nếu có)" : "Cập nhật prompt (text-only)"}: ~in ${estInput.toLocaleString()} + ~out ${estOutput.toLocaleString()}.`}
     >
