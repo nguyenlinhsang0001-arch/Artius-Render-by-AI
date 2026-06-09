@@ -1815,8 +1815,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: C.onAccent }} aria-hidden="true" />
       </div>
       <div>
-        <h1 className="text-xl sm:text-2xl md:text-3xl leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: C.accent }}>
-          Interior Render <span style={{ color: C.accent }}>Agent</span>
+        <h1 className="text-xl sm:text-2xl md:text-3xl leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: C.text }}>
+          Interior Render <span style={{ color: C.text }}>Agent</span>
         </h1>
         <p className="text-[10px] sm:text-sm mt-1.5 whitespace-nowrap" style={{ color: C.textDim }}>Hút style từ ảnh mẫu · giữ góc nhìn theo ảnh mô hình</p>
       </div>
@@ -2831,7 +2831,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         </div>
 
         {/* Footer attribution — bản quyền sản phẩm thuộc về công ty ARTIUS */}
-        <p className="mt-10 text-center text-[8px] leading-relaxed" style={{ color: C.textDim }}>
+        <p className="mt-10 text-center text-[10px] leading-relaxed" style={{ color: C.textDim }}>
           Sản phẩm <strong style={{ color: C.text }}>“Interior Render Agent”</strong><br />thuộc về{" "}
           <a
             href="https://artius.vn/"
@@ -2846,7 +2846,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
         <p className="mt-3 text-center" style={{ color: C.textFaint }}>
           <span
-            className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider"
+            className="inline-block rounded-md px-2 py-0.5 text-[10px] tracking-wider"
             style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
             title="Dấu mốc phiên bản — nếu vẫn thấy số cũ sau khi mở lại thì bạn đang xem bản cache"
           >
