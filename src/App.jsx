@@ -515,7 +515,7 @@ function AnalysisRow({ k, label, i, enValue, onChangeEn }) {
         value={enValue}
         onChange={(e) => { onChangeEn(k, e.target.value); autosize(e.target); }}
         rows={2}
-        className="max-w-8x1 text-sm rounded-lg px-2.5 py-1.5 leading-relaxed outline-none focus:ring-1 resize-none overflow-hidden"
+        className="w-full text-sm rounded-lg px-2.5 py-1.5 leading-relaxed outline-none focus:ring-1 resize-none overflow-hidden"
         style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text, fontFamily: FONT }}
       />
     </div>
