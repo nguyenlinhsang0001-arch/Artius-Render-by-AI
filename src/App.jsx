@@ -1720,8 +1720,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     <button
       onClick={runActionBtn}
       disabled={actionBtnDisabled}
-      className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition-all duration-200 disabled:opacity-40"
-      style={{ background: actionBtnBg, color: C.onAccent, boxShadow: `0 8px 18px -10px ${actionBtnBg}` }}
+      className="w-full inline-flex items-center justify-center gap-5 rounded-xl px-4 py-3 font-bold transition-all duration-200 disabled:opacity-40"
+      style={{ background: actionBtnBg, color: C.onAccent, boxShadow: `0 8px 22px -10px ${actionBtnBg}` }}
     >
       {actionBtnBusy
         ? (<><Loader2 className="w-5 h-5 animate-spin" /> {actionBtnReAnalyze ? "Đang phân tích..." : "Đang cập nhật..."}</>)
