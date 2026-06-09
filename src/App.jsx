@@ -2473,7 +2473,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           {/* ===== CỘT PHẢI (desktop): KẾT QUẢ — luôn hiện trên desktop, CUỘN RIÊNG; mobile: hiện theo tab ===== */}
           <div className={(activeTab === "result" ? "" : "hidden ") + "ipa-col-right"}>
             {/* Desktop: NÚT HÀNH ĐỘNG nằm đầu cột Kết quả */}
-            <div className="hidden md:block mb-10 mt-3">{actionButton}</div>
+            <div className="hidden md:block mb-5 mt-2">{actionButton}</div>
             {/* 4d — SKELETON: trong lúc phân tích lần đầu, panel kết quả hiện các
                 dòng shimmer mô phỏng bố cục prompt sắp đổ vào (client-side, 0 token).
                 Rebuild (đã có prompt) giữ nguyên prompt cũ nên không cần skeleton. */}
