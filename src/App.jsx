@@ -2831,7 +2831,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
         {/* Footer attribution — bản quyền sản phẩm thuộc về công ty ARTIUS */}
         <p className="mt-10 text-center text-[10px] leading-relaxed" style={{ color: C.textDim }}>
-          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Agent”</strong><br />thuộc về{" "}
+          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Agent”</strong><br /> được vận hành bởi{" "}
           <a
             href="https://artius.vn/"
             target="_blank"
