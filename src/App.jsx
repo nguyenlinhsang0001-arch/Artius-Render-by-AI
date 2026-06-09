@@ -1902,7 +1902,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           <div className="ipa-col-left">
 
         {/* ===== P1: THANH TAB (sticky) — Thiết lập | Kết quả ===== */}
-        <div className="sticky top-0 z-30 py-2 mb-2" style={{ background: "rgba(11,14,19,0.85)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+        <div className="sticky top-0 z-30 py-2 mb-2" style={{ background: "rgba(14,17,24,0.85)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <div className={`grid ${isDesktop ? "grid-cols-2" : "grid-cols-3"} gap-1.5 rounded-xl p-1`} style={{ background: C.panel2, border: `1px solid ${C.line}` }}>
             {[{ id: "src", label: "Nguồn & phong cách" }, { id: "cfg", label: "Thiết lập & điều chỉnh" }, { id: "result", label: "Kết quả" }]
               .filter((t) => !(isDesktop && t.id === "result")) // desktop: Kết quả là cột riêng -> ẩn nút tab
