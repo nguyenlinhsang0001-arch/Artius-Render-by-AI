@@ -2190,7 +2190,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                               aria-label={`Phóng to ảnh ${p.label}`}
                               onClick={(e) => { e.stopPropagation(); setZoomStyle(p); }}
                               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setZoomStyle(p); } }}
-                              className="absolute bottom-0.5 right-0.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-25 md:opacity-0 md:group-hover:opacity-80 hover:scale-120"
+                              className="absolute bottom-0.5 right-0.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-25 md:opacity-0 md:group-hover:opacity-100 hover:scale-120"
                               style={{ background: "rgba(0,0,0,0.55)", color: "#9A9A9A", backdropFilter: "blur(2px)" }}
                             >
                               <ZoomIn className="w-3.5 h-3.5" />
@@ -2879,7 +2879,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               className="w-full rounded-xl"
               style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
             />
-            <div className="mt-2 text-center text-Segoe UI font-semibold" style={{ color: "#fff" }}>{zoomStyle.label}</div>
+            <div className="mt-2 text-center text-sm font-semibold" style={{ color: "#fff" }}>{zoomStyle.label}</div>
             <button
               type="button"
               onClick={() => setZoomStyle(null)}
