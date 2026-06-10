@@ -1836,7 +1836,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-grid { margin-top: 1rem; }
         .ipa-col-left, .ipa-col-right { min-width: 0; }
         @media (min-width: 768px) {
-          .ipa-grid { display: grid; grid-template-columns: 6fr 6fr; gap: 1rem; align-items: stretch; }
+          .ipa-grid { display: grid; grid-template-columns: 7fr 5fr; gap: 1rem; align-items: stretch; }
           .ipa-col-left, .ipa-col-right { display: block !important; }
           .ipa-col-right {
             padding-left: 1rem; border-left: 1px solid ${C.line};
