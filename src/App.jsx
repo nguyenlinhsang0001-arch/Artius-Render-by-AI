@@ -2877,7 +2877,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               src={STYLE_IMAGES[zoomStyle.id]}
               alt={zoomStyle.label}
               className="w-full rounded-xl"
-              style={{ maxHeight: "90vh", objectFit: "contain", border: `1px solid ${C.line}` }}
+              style={{ maxHeight: "90vh", objectFit: "contain", border: `1px solid ${C.text}` }}
             />
             <div className="mt-2 text-center text-sm font-semibold" style={{ color: "#fff" }}>{zoomStyle.label}</div>
             <button
