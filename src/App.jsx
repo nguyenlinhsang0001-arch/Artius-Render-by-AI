@@ -2870,14 +2870,14 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <div
           onClick={() => setZoomStyle(null)}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
-          style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(1px)" }}
+          style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(0px)" }}
         >
           <div className="relative w-full max-w-[920px]" onClick={(e) => e.stopPropagation()}>
             <img
               src={STYLE_IMAGES[zoomStyle.id]}
               alt={zoomStyle.label}
               className="w-full rounded-xl"
-              style={{ maxHeight: "90vh", objectFit: "contain", border: `1px solid ${C.text}` }}
+              style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
             />
             <div className="mt-2 text-center text-sm font-semibold" style={{ color: "#fff" }}>{zoomStyle.label}</div>
             <button
