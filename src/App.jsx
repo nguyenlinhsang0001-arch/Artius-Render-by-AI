@@ -2878,7 +2878,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               className="w-full rounded-xl"
               style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
             />
-            <div className="mt-2 text-center text-sm font-semibold" style={{ color: "#fff" }}>{zoomStyle.label}</div>
+            <div className="mt-2 text-center text-sm font-regular" style={{ color: "#fff" }}>{zoomStyle.label}</div>
           </div>
         </div>
       )}
