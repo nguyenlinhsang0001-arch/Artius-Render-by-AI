@@ -2121,17 +2121,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   )}
                 </div>
               )}
-
-              {stylePreset && !styleImg && (
-                <p className="text-xs mt-2.5" style={{ color: C.accentSoft }}>
-                  {blendMode && styleB && styleB !== stylePreset ? (
-                    <>Đang trộn <strong>{presetName(stylePreset)} {blendRatio}%</strong> × <strong>{presetName(styleB)} {100 - blendRatio}%</strong>. Nạp ảnh STYLE bất kỳ lúc nào sẽ thay toàn bộ bằng ảnh.</>
-                  ) : (
-                    <>Đang dùng preset <strong>{STYLE_PRESETS.find((p) => p.id === stylePreset)?.label}</strong>. Nạp ảnh STYLE bất kỳ lúc nào sẽ thay preset bằng ảnh.</>
-                  )}
-                </p>
-              )}
-
+              
               {/* Chips gom theo NHÓM. Mỗi nhóm có nhãn nhỏ + grid chip. */}
               {Array.from(new Set(STYLE_PRESETS.map((p) => p.group))).map((grp, gi) => (
                 <div key={grp} className={`mb-2.5 last:mb-0 ${gi === 0 ? "mt-4" : ""}`}>
