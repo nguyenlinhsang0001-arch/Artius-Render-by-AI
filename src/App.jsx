@@ -2190,8 +2190,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                               aria-label={`Phóng to ảnh ${p.label}`}
                               onClick={(e) => { e.stopPropagation(); setZoomStyle(p); }}
                               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setZoomStyle(p); } }}
-                              className="absolute bottom-0.5 right-0.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110"
-                              style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(2px)" }}
+                              className="absolute bottom-0.5 right-0.5 z-20 inline-flex items-center justify-center w-6 h-6 rounded-full cursor-pointer transition-opacity duration-150 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110"
+                              style={{ background: "rgba(0,0,0,0.55)", color: "#525252", backdropFilter: "blur(2px)" }}
                             >
                               <ZoomIn className="w-3.5 h-3.5" />
                             </span>
