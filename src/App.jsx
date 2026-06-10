@@ -2870,7 +2870,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <div
           onClick={() => setZoomStyle(null)}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
-          style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }}
+          style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(1px)" }}
         >
           <div className="relative w-full max-w-[920px]" onClick={(e) => e.stopPropagation()}>
             <img
