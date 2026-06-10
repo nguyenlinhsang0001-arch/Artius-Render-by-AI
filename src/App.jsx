@@ -2197,16 +2197,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                             </span>
                           )}
                           </div>
-                          {/* 4a — dấu CHECK ở góc trên-trái thumbnail khi preset đang được chọn
-                              (chính: nền onAccent/check accent; phụ blend: nền accent/check onAccent). */}
-                          {(on || onB) && (
-                            <span
-                              className="absolute top-1 left-1 z-10 inline-flex items-center justify-center w-[18px] h-[18px] rounded-full"
-                              style={{ background: on ? C.onAccent : C.accent, boxShadow: `0 1px 4px ${C.bg}88` }}
-                            >
-                              <Check className="w-3 h-3" strokeWidth={3} style={{ color: on ? C.accent : C.onAccent }} />
-                            </span>
-                          )}
                           <div className="text-[12px] font-semibold leading-tight" style={{ color: on ? C.onAccent : C.text }}>{p.label}</div>
                           {blendMode && (on || onB) && (
                             <span
