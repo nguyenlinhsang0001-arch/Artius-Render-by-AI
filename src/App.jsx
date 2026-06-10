@@ -2067,7 +2067,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               )}
 
               {styleImg && (
-                <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.accent}}>
+                <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.text}}>
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   Đang dùng ảnh STYLE làm nguồn phong cách. Preset bị vô hiệu để tránh xung đột.
                 </div>
