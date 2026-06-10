@@ -2843,7 +2843,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold transition-colors"
-            style={{ color: C.accent }}
+            style={{ color: C.text }}
           >
             CÔNG TY THIẾT KẾ VÀ XÂY DỰNG ARTIUS
           </a>
