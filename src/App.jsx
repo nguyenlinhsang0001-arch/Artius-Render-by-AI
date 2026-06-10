@@ -2869,7 +2869,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <div
           onClick={() => setZoomStyle(null)}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
-          style={{ background: "rgba(0,0,0,0.60)", backdropFilter: "blur(0px)" }}
+          style={{ background: "rgba(0,0,0,0.90)", backdropFilter: "blur(2px)" }}
         >
           <div className="relative w-full max-w-[920px]" onClick={(e) => e.stopPropagation()}>
             <img
@@ -2878,7 +2878,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               className="w-full rounded-xl"
               style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
             />
-            <div className="mt-2 text-center text-sm font-semibold" style={{ color: "#fff" }}>{zoomStyle.label}</div>
+            <div className="mt-2 text-center text-sm font-regular" style={{ color: "#fff" }}>{zoomStyle.label}</div>
           </div>
         </div>
       )}
