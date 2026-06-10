@@ -72,8 +72,6 @@ const AR_TO_SIZE = {
 const NEGATIVE_BY_PLATFORM = {
   nanobanana:
     "people, extra doors, cluttered cables, watermark, text, signature, blurry, low resolution, grainy, oversaturated, cartoonish, 3d render, cgi, bad anatomy, poorly drawn, bad lighting, overexposed, underexposed, draft, amateur photo",
-  midjourney:
-    "people, extra doors, cluttered cables, text, watermark, ceiling height",
 };
 
 // Fallback chung khi ô negative rỗng và chưa rõ nền tảng (mặc định Nano Banana).
@@ -294,51 +292,6 @@ const STYLE_PRESETS = [
   { id: "dark_academia", group: "Cá tính & Táo bạo", label: "Dark Academia",      desc: "Học thuật cổ trầm mặc: gỗ sẫm và da nâu, tường xanh rêu–đỏ rượu, kệ sách kín tường, đèn vàng ấm, tranh cổ và đồ đồng — hoài cổ, trí thức và ấm cúng.",
     brief: "Dark academia style: dark stained wood and aged leather, deep moody palette of forest green, oxblood and brown, floor-to-ceiling bookshelves, vintage oil paintings, brass and amber task lighting, antique furnishings, scholarly nostalgic candlelit atmosphere" },
 ];
-
-// =============================================================
-// STYLE IMAGES — ẢNH VÍ DỤ ĐIỂN HÌNH cho từng preset (thumbnail trong grid).
-// QUAN TRỌNG: artifact Claude.ai CHẶN ảnh từ link ngoài (Google Drive, CDN...).
-// Trong sandbox, <img> chỉ nhận `data:` (base64), `blob:` và domain nội bộ.
-// => Mỗi ảnh PHẢI là chuỗi base64 dán thẳng vào đây theo dạng:
-//      minimal: "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
-// Mẹo: NÉN ảnh về thumbnail nhỏ (~200×130px, JPEG ~70%) trước khi convert,
-// nếu không file sẽ phình rất to và lag. Để rỗng "" thì grid tự hiện
-// placeholder (khung + icon). Key = đúng `id` của preset ở trên.
-// =============================================================
-const STYLE_IMAGES = {
-  taiwanese: "/styles/taiwanese.webp",
-  minimal: "/styles/minimal.webp",
-  warm_minimal: "/styles/warm_minimal.webp",
-  quiet_lux: "/styles/quiet_lux.webp",
-  japandi: "/styles/japandi.webp",
-  wabikan: "/styles/wabikan.webp",
-  scandi: "/styles/scandi.webp",
-  modern: "/styles/modern.webp",
-  contemporary: "/styles/contemporary.webp",
-  organic_modern: "/styles/organic_modern.webp",
-  midcentury: "/styles/midcentury.webp",
-  transitional: "/styles/transitional.webp",
-  modern_lux: "/styles/modern_lux.webp",
-  modern_classic: "/styles/modern_classic.webp",
-  neoclassical: "/styles/neoclassical.webp",
-  euro_classic: "/styles/euro_classic.webp",
-  artdeco: "/styles/artdeco.webp",
-  french_country: "/styles/french_country.webp",
-  farmhouse: "/styles/farmhouse.webp",
-  coastal: "/styles/coastal.webp",
-  biophilic: "/styles/biophilic.webp",
-  bohemian: "/styles/bohemian.webp",
-  mediterranean: "/styles/mediterranean.webp",
-  indochine: "/styles/indochine.webp",
-  modern_indochine: "/styles/modern_indochine.webp",
-  tropical: "/styles/tropical.webp",
-  industrial: "/styles/industrial.webp",
-  brutalist: "/styles/brutalist.webp",
-  maximalist: "/styles/maximalist.webp",
-  memphis: "/styles/memphis.webp",
-  dark_academia: "/styles/dark_academia.webp",
-};
-
 // =============================================================
 // ROOM TYPES — LOẠI KHÔNG GIAN của bối cảnh cần render.
 // Mục đích: cho Agent biết đây là phòng/không gian chức năng gì, để chọn đúng
