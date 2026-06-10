@@ -2861,7 +2861,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           <span
             className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider"
             style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
-            title="Dấu mốc phiên bản — nếu vẫn thấy số cũ sau khi mở lại thì bạn đang xem bản cache"
           >
             build {APP_VERSION}
             
@@ -2870,7 +2869,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <div
           onClick={() => setZoomStyle(null)}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
-          style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(0px)" }}
+          style={{ background: "rgba(0,0,0,0.60)", backdropFilter: "blur(0px)" }}
         >
           <div className="relative w-full max-w-[920px]" onClick={(e) => e.stopPropagation()}>
             <img
@@ -2880,17 +2879,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
             />
             <div className="mt-2 text-center text-sm font-semibold" style={{ color: "#fff" }}>{zoomStyle.label}</div>
-            <button
-              type="button"
-              onClick={() => setZoomStyle(null)}
-              aria-label="Đóng"
-              className="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 transition-all hover:scale-110"
-              style={{ background: "transparent", color: "rgba(255,255,255,0.6)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.95)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
-            >
-
-            </button>
           </div>
         </div>
       )}
