@@ -2563,7 +2563,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                         onClick={renderImage}
                         disabled={genStatus === "generating"}
                         className="inline-flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5 transition-colors"
-                        style={{ border: `1px solid ${C.accent}`, color: genStatus === "generating" ? C.textDim : C.accent, background: "transparent", opacity: genStatus === "generating" ? 0.6 : 1, cursor: genStatus === "generating" ? "default" : "pointer" }}
+                        style={{ border: `1px solid ${C.accent}`, color: genStatus === "generating" ? C.textDim : C.accent, background: " ", opacity: genStatus === "generating" ? 0.6 : 1, cursor: genStatus === "generating" ? "default" : "pointer" }}
                       >
                         {genStatus === "generating"
                           ? (<><Loader2 className="w-4 h-4 animate-spin" /> Đang tạo…</>)
