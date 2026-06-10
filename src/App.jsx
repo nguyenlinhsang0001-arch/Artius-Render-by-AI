@@ -2394,7 +2394,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   style={{ background: C.panel, border: `1px solid ${C.line}` }}
                 >
                   <span className="text-lg flex items-center gap-2 font-bold tracking-tight" style={{ color: C.text }}>
-                    <Palette className="w-4 h-4" style={{ color: C.accent }} /> Điều Chỉnh Nâng Cao
+                    <Palette className="w-3 h-3" style={{ color: C.accent }} /> Điều Chỉnh Nâng Cao
                   </span>
                   <ChevronDown
                     className="w-5 h-5 shrink-0 transition-transform duration-200"
