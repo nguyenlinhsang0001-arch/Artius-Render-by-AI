@@ -1873,7 +1873,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <h1 className="text-xl sm:text-2xl md:text-3xl leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: C.accent }}>
           Interior Render <span style={{ color: C.accent }}>Agent</span>
         </h1>
-        <p className="text-[10px] sm:text-sm mt-1.2 whitespace-nowrap" style={{ color: C.text }}>Chỉ dùng để tìm ý tưởng - không nên hiệu chỉnh chi tiết</p>
+        <p className="text-[10px] sm:text-sm mt-1.5 whitespace-nowrap" style={{ color: C.text }}>Chỉ dùng để tìm ý tưởng - không nên hiệu chỉnh chi tiết</p>
       </div>
     </div>
   );
