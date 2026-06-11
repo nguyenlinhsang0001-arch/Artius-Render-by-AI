@@ -1870,10 +1870,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: C.onAccent }} aria-hidden="true" />
       </div>
       <div>
-        <h1 className="text-xl.2 sm:text-2xl md:text-3xl leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: C.accent }}>
+        <h1 className="text-xl sm:text-2xl md:text-3xl leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: C.accent }}>
           Interior Render <span style={{ color: C.accent }}>Agent</span>
         </h1>
-        <p className="text-[10px] sm:text-sm mt-1.5 whitespace-nowrap" style={{ color: C.textDim }}>Lên ý tưởng thiết kế · không dùng để hiệu chỉnh chi tiết</p>
+        <p className="text-[10px] sm:text-sm mt-1.5 whitespace-nowrap" style={{ color: C.text }}>Không dùng để hiệu chỉnh chi tiết <p> </p>Khuyến nghị copy Prompt qua ChatGPT để tạo ảnh</p>
       </div>
     </div>
   );
