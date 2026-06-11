@@ -30,7 +30,7 @@
 
 export const config = {
   // Hobby: tối đa 60. Pro: có thể nâng 300. Cần Fluid Compute mới hiệu lực.
-  maxDuration: 60,
+  maxDuration: 180,
 };
 
 const OPENAI_BASE = "https://api.openai.com/v1";
