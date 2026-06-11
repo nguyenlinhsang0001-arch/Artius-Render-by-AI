@@ -1,9 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Loader2, Copy, Check, Image as ImageIcon, Sparkles, AlertCircle, Palette, Box, Lock, Pencil, Move3d, Droplet, Layers, Maximize2, Ban, X, RefreshCw, Home, History, ChevronDown, Shuffle, RotateCcw } from "lucide-react";
+import { Loader2, Copy, Check, Image as ImageIcon, Sparkles, AlertCircle, Palette, Box, Lock, Pencil, Move3d, Droplet, Layers, Maximize2, Ban, X, RefreshCw, Home, History, ChevronDown, ChevronLeft, ChevronRight, Shuffle, RotateCcw, Download, ZoomIn } from "lucide-react";
 
 const PLATFORMS = [
-  { id: "nanobanana", label: "Nano Banana 2, ChatGPT", hint: "" },
-  { id: "midjourney", label: "Midjourney", hint: "" },
+  { id: "nanobanana", label: "ChatGPT (gpt-image)", hint: "" },
 ];
 
 // =============================================================
@@ -39,6 +38,25 @@ const ASPECT_PHRASE = {
   "3:4":  "a 3:4 portrait composition",
   "2:3":  "a 2:3 portrait composition",
   "9:16": "a tall 9:16 vertical composition",
+};
+
+// AR_TO_SIZE — map tỷ lệ -> chuỗi "WIDTHxHEIGHT" hợp lệ cho gpt-image-2.
+// Ràng buộc của gpt-image-2: W & H đều chia hết cho 16, và tỷ lệ phải nằm
+// trong khoảng 1:3..3:1. Đây mới là tham số THẬT ép khung hình khi render
+// (ASPECT_PHRASE chỉ là mô tả câu chữ, model không dùng để định tỷ lệ).
+// Các size dưới đây ~1.0–1.35MP để giữ chi phí ảnh OpenAI ở mức hợp lý.
+const AR_TO_SIZE = {
+  "21:9": "1568x672",   // 98×16, 42×16  (ratio 2.333)
+  "2:1":  "1536x768",   // 96×16, 48×16
+  "16:9": "1536x864",   // 96×16, 54×16
+  "3:2":  "1536x1024",  // 96×16, 64×16
+  "4:3":  "1344x1008",  // 84×16, 63×16
+  "5:4":  "1280x1024",  // 80×16, 64×16
+  "1:1":  "1024x1024",
+  "4:5":  "1024x1280",
+  "3:4":  "1008x1344",
+  "2:3":  "1024x1536",
+  "9:16": "864x1536",
 };
 
 // =============================================================
@@ -186,53 +204,6 @@ function isLocked(key, geometryValue) {
   const row = GEOMETRY_MATRIX[key];
   if (!row) return false;
   return row[geometryValue] === true;
-}
-
-// =============================================================
-// AXIS GUIDANCE — sinh chỉ dẫn Trục 1 (GEOMETRY LOCK) + Trục 2 (STYLE INTENSITY)
-// cho LLM. Dùng CHUNG cho analyze() và rebuildPrompt() để hai đường KHÔNG lệch
-// nhau (trước đây rebuild thiếu hai khối này nên đổi slider không vào prompt).
-// =============================================================
-
-// Clause mô tả từng mức style intensity (0..3). Tách ra module-level để cả
-// styleIntensityClause() lẫn buildAxisGuidance() dùng chung một nguồn.
-const STYLE_INTENSITY_CLAUSES = [
-  "Apply the target style at a restrained, understated intensity: render the scene fully finished and photorealistic, but keep the materials, colours, lighting and mood muted and subtle — a light, low-key interpretation of the style. Do NOT leave any surface raw or unfinished; only the styling strength is dialled down, never the level of finish.",
-  "Apply the target style at a moderate, balanced intensity: present its materials, palette, lighting and mood clearly while keeping the result natural and believable.",
-  "Apply the target style at a strong intensity: closely match the target materials, palette, textures, lighting and mood so the style reads clearly and confidently.",
-  "Apply the target style at maximum intensity: a bold, dramatic and expressive interpretation that pushes the materials, colour, lighting and mood to the fullest, prioritising the aesthetic over fidelity to the original surface appearance.",
-];
-
-function buildAxisGuidance(hasModel, geometry, styleIntensity) {
-  // TRỤC 1 — GEOMETRY: yếu tố nào khóa theo MODEL, yếu tố nào được đổi.
-  const lockedItems = [];
-  const freeItems = [];
-  Object.keys(GEOMETRY_MATRIX).forEach((k) => {
-    const enLabel = k.replace(/_/g, " ");
-    if (isLocked(k, geometry)) lockedItems.push(enLabel);
-    else freeItems.push(enLabel);
-  });
-  const geometryLabel = GEOMETRY_LEVELS[geometry]?.label || "";
-  const geometryGuidance = hasModel
-    ? `\n\nGEOMETRY LOCK = "${geometryLabel}" (level ${geometry}/3).
-- LOCKED (must match the MODEL image, do not change): ${lockedItems.join(", ") || "(none)"}.
-- MAY CHANGE (AI is allowed to restyle/replace): ${freeItems.join(", ") || "(none)"}.
-- ${["Strictly preserve the MODEL's geometry, camera, walls, openings and every element's position; only swap surface materials, colors and lighting.",
-    "Keep the camera, walls, windows and overall composition fixed. You may swap out small decor and light fixtures.",
-    "Keep the camera angle and room proportions. Furniture and its arrangement, decor and fixtures may be replaced to suit the target style.",
-    "Use the MODEL only as loose inspiration for the space; you may reinterpret the geometry freely while keeping it a plausible interior."][geometry]}`
-    : `\n\n${[
-      "SPATIAL DISCIPLINE = strict (level 0/3): compose a single coherent, structurally plausible room with accurate real-world proportions, perfectly straight vertical lines, and a stable conventional eye-level camera. Do NOT invent dramatic, surreal or biomorphic geometry — prioritise architectural believability over visual drama.",
-      "SPATIAL DISCIPLINE = mostly strict (level 1/3): keep a coherent single-room composition with accurate proportions and straight verticals; you may add mild architectural interest (an arch, a subtle level change) but keep the overall geometry conventional and believable.",
-      "SPATIAL DISCIPLINE = flexible (level 2/3): you may freely arrange the spatial layout, camera angle and architectural features to best express the style, while keeping the result a plausible, structurally sound interior.",
-      "SPATIAL DISCIPLINE = free / bold (level 3/3): reinterpret the space expressively — dramatic sculptural or biomorphic architecture, unusual camera angles and bold spatial geometry are encouraged, as long as it still reads as a real interior. Reflect this freedom explicitly in the prompt wording.",
-    ][geometry]}`;
-
-  // TRỤC 2 — STYLE INTENSITY: áp style mạnh/nhẹ.
-  const intensityLabel = STYLE_INTENSITY_LEVELS[styleIntensity]?.label || "";
-  const intensityGuidance = `\n\nSTYLE INTENSITY = "${intensityLabel}" (level ${styleIntensity}/3). ${STYLE_INTENSITY_CLAUSES[styleIntensity]}`;
-
-  return { geometryGuidance, intensityGuidance };
 }
 
 // =============================================================
@@ -455,7 +426,7 @@ const MONO = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 // phụ thuộc file ngoài. Thay cho icon Sparkles ở header.
 const ARTIUS_LOGO = "data:image/png;base64,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";
 
-const APP_VERSION = "v28.13 · 11/06/2026";
+const APP_VERSION = "v28.12 · 10/06/2026";
 
 // =============================================================
 // API_URL — ĐIỂM GỌI API DUY NHẤT, đặt một chỗ để dễ đổi.
@@ -468,6 +439,7 @@ const APP_VERSION = "v28.13 · 11/06/2026";
 //    Muốn test phải deploy lên Vercel hoặc chạy `vercel dev` ở local.
 // =============================================================
 const API_URL = "/api/generate";
+const IMAGE_API_URL = "/api/generate-image";
 
 // =============================================================
 // UploadBox — ĐỊNH NGHĨA NGOÀI component chính để không bị recreate mỗi render.
@@ -553,9 +525,9 @@ function AnalysisRow({ k, label, i, enValue, onChangeEn }) {
 // =============================================================
 // SectionLabel — nhãn bước (số tròn + tiêu đề) để chia 3 bước rõ ràng.
 // =============================================================
-function StepLabel({ n, children }) {
+function StepLabel({ n, children, tight }) {
   return (
-    <div className="flex items-center gap-2.5 mb-3 mt-8">
+    <div className={`flex items-center gap-2.5 mb-3 ${tight ? "mt-2" : "mt-8"}`}>
       <span
         className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[12px] font-bold shrink-0"
         style={{ background: C.accent, color: C.onAccent }}
@@ -584,6 +556,18 @@ export default function InteriorPromptAgent() {
   // Khối "Điều Chỉnh Nâng Cao" (13 field analysis) — collapsible, MẶC ĐỊNH THU GỌN.
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [prompts, setPrompts] = useState(null);
+  const [promptOpen, setPromptOpen] = useState(false); // prompt sau khi tạo: thu gọn mặc định, bấm "Xem" mới mở
+  const [activeTab, setActiveTab] = useState("src"); // 4 tab: "src" Nguồn & phong cách | "cfg" Thiết lập & điều chỉnh | "result" Kết quả
+  const [armAnalyze, setArmAnalyze] = useState(false); // xác nhận 2 chạm cho "Phân tích" (tốn token)
+  const [isDesktop, setIsDesktop] = useState(false);   // >=768px: split-view (Kết quả cột phải luôn hiện)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const fn = () => setIsDesktop(mq.matches);
+    fn(); mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+  // Tab controls hiệu lực: trên desktop nếu activeTab="result" (từ mobile sang) thì coi như "src".
+  const effectiveControlTab = (isDesktop && activeTab === "result") ? "src" : activeTab;
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(null);
   const [platform, setPlatform] = useState("nanobanana");
@@ -595,6 +579,8 @@ export default function InteriorPromptAgent() {
   // Preset đang hover (để hiện mô tả chi tiết ở panel bên dưới mà không
   // làm các nút chip dài ra). null = không hover.
   const [presetHover, setPresetHover] = useState(null);
+  // Ảnh preset đang phóng to (lightbox). null = đóng. Giữ cả object preset để hiện tên.
+  const [zoomStyle, setZoomStyle] = useState(null);
   // ── STYLE BLEND (Hướng A): trộn 2 preset với tỷ lệ ──────────────
   // blendMode bật → ngoài stylePreset (style A / primary) còn dùng styleB
   // (secondary) + blendRatio (% của style A, 50..90). CHỈ áp khi KHÔNG có ảnh
@@ -607,6 +593,15 @@ export default function InteriorPromptAgent() {
   // 3 cải thiện: tỷ lệ khung + danh sách tránh.
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE);
+  // Auto-grow ô Negative: chiều cao bám nội dung, cap 320px -> vượt mới scroll.
+  const negRef = useRef(null);
+  const fitNeg = (el) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px"; // giãn theo nội dung, không cap -> không bao giờ scroll
+  };
+  // Cập nhật chiều cao khi value đổi từ ngoài (đổi platform / khôi phục mặc định / gõ).
+  useEffect(() => { fitNeg(negRef.current); }, [negativePrompt]);
   // LOẠI KHÔNG GIAN: roomSel = giá trị dropdown ("__custom__" = chế độ tự nhập,
   // là dòng đầu danh sách); customRoomText = nội dung khi tự nhập. Mặc định để
   // ở chế độ tự nhập với ô rỗng -> coi như KHÔNG áp loại không gian (tùy chọn).
@@ -622,6 +617,14 @@ export default function InteriorPromptAgent() {
   const [rebuilding, setRebuilding] = useState(false);
   const [usage, setUsage] = useState({ input: 0, output: 0, calls: 0 });
 
+  // Ảnh render từ gpt-image-2 (qua /api/generate-image). genImg = data URI
+  // để review; genStatus = idle|generating|done|error. KHÔNG tốn token
+  // Anthropic — đây là call OpenAI (tính phí trên tài khoản OpenAI riêng).
+  const [genImg, setGenImg] = useState(null);
+  const [genStatus, setGenStatus] = useState("idle");
+  const [genError, setGenError] = useState(null);
+  const [holdOrig, setHoldOrig] = useState(false); // hold-to-compare: giữ trên ảnh -> hiện ảnh MODEL gốc
+
   // =============================================================
   // THANH TIẾN TRÌNH (progress bar) — hiệu ứng "load game", CHẠY THUẦN
   // CLIENT, KHÔNG tốn token. Vì không biết trước API mất bao lâu, ta dùng kỹ
@@ -635,14 +638,16 @@ export default function InteriorPromptAgent() {
 
   // Agent đang gọi API? (phân tích ảnh HOẶC sinh lại prompt từ analysis)
   const agentBusy = status === "analyzing" || rebuilding;
+  const genBusy = genStatus === "generating";          // tạo ảnh gpt-image đang chạy
+  const anyBusy = agentBusy || genBusy;
 
   useEffect(() => {
-    if (agentBusy) {
+    if (anyBusy) {
       // ETA (thời lượng kỳ vọng) khác nhau theo thao tác: PHÂN TÍCH ẢNH gửi kèm
       // ảnh + sinh nhiều field nên lâu hơn; CẬP NHẬT prompt là text-only nên
       // nhanh hơn. Thanh bò theo THỜI GIAN THỰC trôi qua so với ETA này -> khớp
       // tiến trình thật thay vì vọt nhanh. (Vẫn không phải % tuyệt đối.)
-      const eta = status === "analyzing" ? 13000 : 7000;
+      const eta = status === "analyzing" ? 13000 : genBusy ? 22000 : 7000;
       progressStart.current = Date.now();
       setProgressActive(true);
       setProgress(4);
@@ -661,7 +666,7 @@ export default function InteriorPromptAgent() {
     setProgress((p) => (p > 0 ? 100 : 0));
     const t = setTimeout(() => { setProgressActive(false); setProgress(0); }, 450);
     return () => clearTimeout(t);
-  }, [agentBusy, status]);
+  }, [anyBusy, status, genBusy]);
 
   // LỊCH SỬ PROMPT — lưu tối đa 8 phiên bản gần nhất (mới nhất ở đầu mảng).
   // Mỗi entry = { id, timeLabel, changes, prompts, analysis, params }:
@@ -673,6 +678,7 @@ export default function InteriorPromptAgent() {
   const [history, setHistory] = useState([]);
   // entry id đang mở rộng để xem lại prompt + 13 field. null = không mở.
   const [expandedHistory, setExpandedHistory] = useState(null);
+  const [histDetailOpen, setHistDetailOpen] = useState(null); // id item lịch sử đang mở phần prompt + analysis
   // Đẩy một bản ghi mới vào lịch sử; tự cắt còn 8 mục gần nhất. LƯU MỌI lần tạo
   // prompt thành công (kể cả lần đầu changes rỗng) miễn có prompt để dùng lại.
   function pushHistory(changes, record) {
@@ -684,6 +690,7 @@ export default function InteriorPromptAgent() {
       prompts: record.prompts,
       analysis: record.analysis ? { ...record.analysis } : null,
       params: record.params || null,
+      genImg: null, // ảnh gpt-image-2 (nếu có) được gắn sau qua renderImage()
     };
     setHistory((h) => [entry, ...h].slice(0, 8));
   }
@@ -728,6 +735,9 @@ export default function InteriorPromptAgent() {
       setCustomRoomText(pr.customRoomText);
       setSnapshot({ ...pr, analysis: entry.analysis ? { ...entry.analysis } : null });
     }
+    setGenImg(entry.genImg || null);
+    setGenStatus(entry.genImg ? "done" : "idle");
+    setGenError(null);
     setImgDirty(false);
     setStatus("done");
   }
@@ -778,7 +788,15 @@ export default function InteriorPromptAgent() {
 
   // Diễn giải style intensity thành mô tả EN nhồi vào prompt.
   function styleIntensityClause() {
-    return STYLE_INTENSITY_CLAUSES[styleIntensity];
+    return [
+      // 0 — Nhẹ: KHÔNG còn neo vào "original scene" (vốn khiến model bám lấy
+      // khối model thô/xám). Mức này = một phiên bản style TIẾT CHẾ nhưng vẫn
+      // là render HOÀN THIỆN, photorealistic — chỉ giảm cường độ thẩm mỹ.
+      "Apply the target style at a restrained, understated intensity: render the scene fully finished and photorealistic, but keep the materials, colours, lighting and mood muted and subtle — a light, low-key interpretation of the style. Do NOT leave any surface raw or unfinished; only the styling strength is dialled down, never the level of finish.",
+      "Apply the target style at a moderate, balanced intensity: present its materials, palette, lighting and mood clearly while keeping the result natural and believable.",
+      "Apply the target style at a strong intensity: closely match the target materials, palette, textures, lighting and mood so the style reads clearly and confidently.",
+      "Apply the target style at maximum intensity: a bold, dramatic and expressive interpretation that pushes the materials, colour, lighting and mood to the fullest, prioritising the aesthetic over fidelity to the original surface appearance.",
+    ][styleIntensity];
   }
 
   // Thay các placeholder {{AR}} {{ARPHRASE}} {{NEG}} {{S}} bằng giá trị thực
@@ -939,6 +957,7 @@ export default function InteriorPromptAgent() {
     setSnapshot(null);
     setHistory([]);
     setExpandedHistory(null);
+    setGenImg(null); setGenStatus("idle"); setGenError(null);
     setImgDirty(false);
     setStatus("idle");
   }
@@ -1091,13 +1110,38 @@ export default function InteriorPromptAgent() {
     setError(null);
     setAnalysis(null);
     setPrompts(null);
+    setGenImg(null); setGenStatus("idle"); setGenError(null);
 
     const hasModel = !!modelImg;
     const isNano = platform === "nanobanana";
 
-    // ----- TRỤC 1 (GEOMETRY) + TRỤC 2 (STYLE INTENSITY) — dùng helper CHUNG
-    // buildAxisGuidance() (cùng nguồn với rebuildPrompt) để hai đường không lệch.
-    const { geometryGuidance, intensityGuidance } = buildAxisGuidance(hasModel, geometry, styleIntensity);
+    // ----- TRỤC 1: GEOMETRY — yếu tố nào bị khóa theo MODEL -----
+    const lockedItems = [];
+    const freeItems = [];
+    Object.keys(GEOMETRY_MATRIX).forEach((k) => {
+      const enLabel = k.replace(/_/g, " ");
+      if (isLocked(k, geometry)) lockedItems.push(enLabel);
+      else freeItems.push(enLabel);
+    });
+    const geometryLabel = GEOMETRY_LEVELS[geometry]?.label || "";
+    const geometryGuidance = hasModel
+      ? `\n\nGEOMETRY LOCK = "${geometryLabel}" (level ${geometry}/3).
+- LOCKED (must match the MODEL image, do not change): ${lockedItems.join(", ") || "(none)"}.
+- MAY CHANGE (AI is allowed to restyle/replace): ${freeItems.join(", ") || "(none)"}.
+- ${["Strictly preserve the MODEL's geometry, camera, walls, openings and every element's position; only swap surface materials, colors and lighting.",
+      "Keep the camera, walls, windows and overall composition fixed. You may swap out small decor and light fixtures.",
+      "Keep the camera angle and room proportions. Furniture and its arrangement, decor and fixtures may be replaced to suit the target style.",
+      "Use the MODEL only as loose inspiration for the space; you may reinterpret the geometry freely while keeping it a plausible interior."][geometry]}`
+      : `\n\n${[
+        "SPATIAL DISCIPLINE = strict (level 0/3): compose a single coherent, structurally plausible room with accurate real-world proportions, perfectly straight vertical lines, and a stable conventional eye-level camera. Do NOT invent dramatic, surreal or biomorphic geometry — prioritise architectural believability over visual drama.",
+        "SPATIAL DISCIPLINE = mostly strict (level 1/3): keep a coherent single-room composition with accurate proportions and straight verticals; you may add mild architectural interest (an arch, a subtle level change) but keep the overall geometry conventional and believable.",
+        "SPATIAL DISCIPLINE = flexible (level 2/3): you may freely arrange the spatial layout, camera angle and architectural features to best express the style, while keeping the result a plausible, structurally sound interior.",
+        "SPATIAL DISCIPLINE = free / bold (level 3/3): reinterpret the space expressively — dramatic sculptural or biomorphic architecture, unusual camera angles and bold spatial geometry are encouraged, as long as it still reads as a real interior. Reflect this freedom explicitly in the prompt wording.",
+      ][geometry]}`;
+
+    // ----- TRỤC 2: STYLE INTENSITY — áp style mạnh/nhẹ -----
+    const intensityLabel = STYLE_INTENSITY_LEVELS[styleIntensity]?.label || "";
+    const intensityGuidance = `\n\nSTYLE INTENSITY = "${intensityLabel}" (level ${styleIntensity}/3). ${styleIntensityClause()}`;
 
     // ----- LOẠI KHÔNG GIAN (tùy chọn) -----
     // Neo chức năng phòng để model chọn đúng furniture/fixture/layout. Khi có
@@ -1238,6 +1282,7 @@ Rules:
       setAnalysis(parsed.analysis);
       const builtPrompts = { [platform]: parsed.prompt || "" };
       setPrompts(builtPrompts);
+      setPromptOpen(false); // tạo mới -> prompt thu gọn lại
       pushHistory(recordChanges, { prompts: builtPrompts, analysis: parsed.analysis, params: currentParams() });
       takeSnapshot(parsed.analysis);
       setStatus("done");
@@ -1255,6 +1300,7 @@ Rules:
     if (!analysis) return;
     setRebuilding(true);
     setError(null);
+    setGenImg(null); setGenStatus("idle"); setGenError(null);
 
     const hasModel = !!modelImg;
     const allKeys = [...STYLE_KEYS.map(([k]) => k), ...MODEL_KEYS.map(([k]) => k)];
@@ -1271,13 +1317,10 @@ Rules:
       ? ` The space is a ${roomEn}; keep furniture, fixtures and layout appropriate to that function.`
       : "";
 
-    const { geometryGuidance, intensityGuidance } = buildAxisGuidance(hasModel, geometry, styleIntensity);
-
     const instruction = `You are an AI image-generation prompt engineer for interior & architecture renders.
 
-Below is the (user-edited) ENGLISH analysis of an interior scene. Treat this analysis as the STYLE SOURCE and the spatial reference, then build ONE optimized ENGLISH render prompt for platform "${platform}". Re-express its materials, colours, lighting and mood at the STYLE INTENSITY level below — you MAY amplify or restrain them to match that level rather than copying the analysis wording verbatim — and follow the GEOMETRY LOCK below for how strictly to keep camera, layout and structure (do NOT force-preserve the camera or layout when the geometry level allows reinterpretation).${geometryGuidance}${intensityGuidance}
-
-Format: ${effectivePlatformGuide()} Use aspect ratio ${aspectRatio} and avoid-list "${(negativePrompt || NEGATIVE_BY_PLATFORM[platform] || DEFAULT_NEGATIVE).trim()}", embedded as the format requires (do not drop them).${roomNote}
+Below is the (user-edited) ENGLISH analysis of an interior scene. Build ONE optimized ENGLISH render prompt for platform "${platform}" that faithfully reflects this analysis. Format: ${effectivePlatformGuide()} Use aspect ratio ${aspectRatio} and avoid-list "${(negativePrompt || NEGATIVE_BY_PLATFORM[platform] || DEFAULT_NEGATIVE).trim()}", embedded as the format requires (do not drop them).
+${hasModel ? "Preserve the camera viewpoint and spatial layout from the 'camera'/'layout' fields." : "Use a neutral eye-level viewpoint."}${roomNote}
 
 ANALYSIS (JSON):
 ${JSON.stringify(enPayload, null, 2)}
@@ -1322,6 +1365,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
       const builtPrompts = { [platform]: parsed.prompt };
       setPrompts(builtPrompts);
+      setPromptOpen(false); // tạo mới -> prompt thu gọn lại
       pushHistory(recordChanges, { prompts: builtPrompts, analysis, params: currentParams() });
       takeSnapshot();
       setRebuilding(false);
@@ -1329,6 +1373,60 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       console.error(err);
       setError("Lỗi kết nối khi gọi API. Kiểm tra mạng và thử lại.");
       setRebuilding(false);
+    }
+  }
+
+  // =============================================================
+  // RENDER ẢNH bằng gpt-image-2 (OpenAI) qua proxy /api/generate-image.
+  // Endpoint images/edits: gửi MODEL image làm ảnh nền (+ STYLE nếu có) kèm
+  // CHÍNH prompt Nano Banana. Ảnh trả về base64 -> hiển thị bằng data URI.
+  // LƯU Ý: 0 token Anthropic; chi phí tính trên tài khoản OpenAI (ảnh đắt hơn
+  // text nhiều lần). Chỉ chạy khi có MODEL image (edits bắt buộc >=1 ảnh input).
+  // =============================================================
+  async function renderImage() {
+    const prompt = prompts?.nanobanana;
+    if (!prompt || !modelImg) return; // guard: cần prompt Nano Banana + MODEL
+    setGenStatus("generating");
+    setGenError(null);
+    setHoldOrig(false); // tạo ảnh mới -> reset trạng thái so sánh
+
+    // Ảnh input: MODEL trước (nền/geometry), STYLE sau (tham chiếu phong cách).
+    const images = [{ data: modelImg.data, mediaType: modelImg.mediaType }];
+    if (styleImg) images.push({ data: styleImg.data, mediaType: styleImg.mediaType });
+
+    try {
+      const response = await fetch(IMAGE_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // size: ép đúng tỷ lệ người dùng đã chọn (aspectRatio). Fallback "auto"
+        // nếu tỷ lệ lạ không có trong map.
+        body: JSON.stringify({ model: "gpt-image-2", prompt, images, size: AR_TO_SIZE[aspectRatio] || "auto" }),
+      });
+
+      let raw = "";
+      try { raw = await response.text(); } catch { /* body rỗng */ }
+      if (!response.ok) {
+        setGenError(`Lỗi tạo ảnh (HTTP ${response.status}). ${raw.slice(0, 300)}`);
+        setGenStatus("error");
+        return;
+      }
+      let data = null;
+      try { data = JSON.parse(raw); } catch { /* rơi xuống nhánh lỗi dưới */ }
+      const b64 = data?.b64 || data?.data?.[0]?.b64_json || null;
+      if (!b64) {
+        setGenError("Proxy không trả về ảnh. Kiểm tra api/generate-image.js và OPENAI_API_KEY trên Vercel.");
+        setGenStatus("error");
+        return;
+      }
+      const dataUri = `data:image/png;base64,${b64}`;
+      setGenImg(dataUri);
+      setGenStatus("done");
+      // Gắn ảnh vào history entry mới nhất (entry tạo lúc sinh prompt hiện tại).
+      setHistory((h) => (h.length ? [{ ...h[0], genImg: dataUri }, ...h.slice(1)] : h));
+    } catch (err) {
+      console.error(err);
+      setGenError("Lỗi kết nối khi gọi API tạo ảnh. Kiểm tra mạng và thử lại.");
+      setGenStatus("error");
     }
   }
 
@@ -1376,6 +1474,11 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <div class="prompt-label">Prompt · ${escapeHtml(platformName(pid))}</div>
         <pre class="prompt-text">${escapeHtml(text)}</pre>
       </div>`).join("");
+
+    // Ảnh đã tạo (gpt-image-2) — genImg là data URI, nhúng thẳng vào HTML.
+    const imageHtml = h.genImg
+      ? `<h2>Ảnh đã tạo</h2><img class="genimg" src="${h.genImg}" alt="Anh AI tao">`
+      : "";
 
     // Khối thay đổi đã áp dụng (nếu có).
     const changesHtml = (h.changes && h.changes.length > 0)
@@ -1459,6 +1562,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     text-align:center; font-size:11px; color:var(--textFaint);
   }
   footer a{color:var(--accent); text-decoration:none;}
+  .genimg{max-width:100%; height:auto; border-radius:10px; border:1px solid var(--line); margin:8px 0;}
   @media print{ body{background:#fff; color:#111;} .field,.param,.prompt-text{background:#f5f7fa;} }
 </style>
 </head>
@@ -1483,6 +1587,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     <h2>Thay đổi đã áp dụng</h2>
     ${changesHtml}
 
+    ${imageHtml}
+
     <h2>Prompt render (English)</h2>
     ${promptsHtml}
 
@@ -1490,7 +1596,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     ${analysisHtml}
 
     <footer>
-      Xuất từ <strong>Interior Render Prompt Agent</strong> · ${escapeHtml(new Date().toLocaleString("vi-VN"))}<br>
+      Xuất từ <strong>Interior Render Agent</strong> · ${escapeHtml(new Date().toLocaleString("vi-VN"))}<br>
       Sản phẩm thuộc <a href="https://artius.vn/" target="_blank" rel="noopener noreferrer">CÔNG TY THIẾT KẾ VÀ XÂY DỰNG ARTIUS</a>
     </footer>
   </div>
@@ -1571,9 +1677,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     // Trục 1 nay luôn có tác dụng (có model = khóa theo model; không model =
     // kỷ luật không gian), nên đổi mức luôn được ghi nhận.
     if (snapshot.geometry !== geometry)
-      pendingChanges.push({ key: "geometry", label: mjImageRef ? "Trục 1 · Image weight (--iw)" : hasModel ? "Trục 1 · Khóa hình học" : "Trục 1 · Kỷ luật không gian", from: GEOMETRY_LEVELS[snapshot.geometry]?.label, to: GEOMETRY_LEVELS[geometry]?.label });
+      pendingChanges.push({ key: "geometry", label: mjImageRef ? "Image weight (--iw)" : hasModel ? "Khóa hình học" : "Kỷ luật không gian", from: GEOMETRY_LEVELS[snapshot.geometry]?.label, to: GEOMETRY_LEVELS[geometry]?.label });
     if (snapshot.styleIntensity !== styleIntensity)
-      pendingChanges.push({ key: "intensity", label: "Trục 2 · Độ mạnh áp style", from: STYLE_INTENSITY_LEVELS[snapshot.styleIntensity]?.label, to: STYLE_INTENSITY_LEVELS[styleIntensity]?.label });
+      pendingChanges.push({ key: "intensity", label: "Độ mạnh áp style", from: STYLE_INTENSITY_LEVELS[snapshot.styleIntensity]?.label, to: STYLE_INTENSITY_LEVELS[styleIntensity]?.label });
     if (snapshot.negativePrompt !== negativePrompt)
       pendingChanges.push({ key: "negative", label: "Negative prompt", note: "đã chỉnh sửa" });
     // Loại không gian: so sánh cụm EN hiệu lực (bỏ qua khác biệt chỉ ở UI).
@@ -1609,6 +1715,37 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   const costNote = needsReanalyze
     ? (styleImg || modelImg ? "Lần này sẽ phân tích lại (có gửi lại ảnh)." : "Không kèm ảnh nên lần này là text-only, rất nhanh & rẻ.")
     : "API text-only, không gửi lại ảnh nên rất nhanh & rẻ.";
+
+  // ----- NÚT HÀNH ĐỘNG dùng chung (mobile: trong thanh tab · desktop: trong cột Kết quả) -----
+  const actionBtnReAnalyze = !prompts || needsReanalyze;
+  const actionBtnBusy = status === "analyzing" || updateBusy;
+  const actionBtnArmed = !isDesktop && armAnalyze && actionBtnReAnalyze; // mobile: "Phân tích" cần xác nhận 2 chạm · DESKTOP: bỏ
+  const actionBtnDisabled = actionBtnBusy || (actionBtnReAnalyze ? !canAnalyze : !hasPending);
+  const runActionBtn = () => {
+    const goResult = () => { if (!isDesktop) setActiveTab("result"); }; // desktop: Kết quả luôn hiện sẵn
+    if (actionBtnReAnalyze) {
+      if (isDesktop) { analyze(prompts ? pendingChanges : undefined); goResult(); } // DESKTOP: 1 chạm, không cần xác nhận
+      else if (armAnalyze) { setArmAnalyze(false); analyze(prompts ? pendingChanges : undefined); goResult(); }
+      else { setArmAnalyze(true); setTimeout(() => setArmAnalyze(false), 3000); } // mobile: chờ xác nhận, tự hủy 3s
+    } else { rebuildPrompt(pendingChanges); goResult(); } // Cập nhật rẻ -> 1 chạm
+  };
+  const actionBtnBg = actionBtnArmed ? C.neg : (actionBtnReAnalyze ? C.accent : C.pos);
+  const actionButton = (
+    <button
+      onClick={runActionBtn}
+      disabled={actionBtnDisabled}
+      className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 h-12 font-bold transition-all duration-200 disabled:opacity-40"
+      style={{ background: actionBtnBg, color: C.onAccent, boxShadow: `0 8px 22px -10px ${actionBtnBg}` }}
+    >
+      {actionBtnBusy
+        ? (<><Loader2 className="w-5 h-5 animate-spin" /> {actionBtnReAnalyze ? "Đang phân tích..." : "Đang cập nhật..."}</>)
+        : actionBtnArmed
+          ? (<><AlertCircle className="w-5 h-5" /> Bấm lần nữa để xác nhận</>)
+          : actionBtnReAnalyze
+            ? (<><ImageIcon className="w-5 h-5" /> Phân tích &amp; Tạo prompt</>)
+            : (<><RefreshCw className="w-5 h-5" /> Cập nhật thay đổi</>)}
+    </button>
+  );
 
   // ----- DỰ TÍNH TOKEN cho LẦN GỌI API KẾ TIẾP -----
   // Con số XẤP XỈ (token thật chỉ biết sau khi API trả về). Hằng số được HIỆU
@@ -1693,7 +1830,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       </div>
       <div>
         <h1 className="text-xl sm:text-2xl md:text-3xl leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: C.text }}>
-          Interior Render <span style={{ color: C.accent }}>Prompt Agent</span>
+          Interior Render <span style={{ color: C.text }}>Agent</span>
         </h1>
         <p className="text-[10px] sm:text-sm mt-1.5 whitespace-nowrap" style={{ color: C.textDim }}>Hút style từ ảnh mẫu · giữ góc nhìn theo ảnh mô hình</p>
       </div>
@@ -1723,7 +1860,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   );
 
   return (
-    <div className="min-h-screen p-4 md:p-8 overflow-x-hidden" style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT }}>
+    <div className="min-h-screen p-4 md:p-8" style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT, overflowX: "clip" }}>
       {/* Nạp font sans + mono (Plus Jakarta Sans hỗ trợ tiếng Việt) */}
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
@@ -1731,39 +1868,105 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       <style>{`
         @keyframes ipa-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
         .ipa-anim { animation: ipa-fade-up .35s ease both; }
+        @keyframes ipa-glow { 0%,100% { box-shadow: 0 0 14px -3px ${C.accent}, 0 0 5px -1px ${C.accent}; } 50% { box-shadow: 0 0 24px -1px ${C.accent}, 0 0 10px 0 ${C.accent}; } }
+        .ipa-glow { animation: ipa-glow 1.8s ease-in-out infinite; }
+        .ipa-scroll { scrollbar-width: thin; scrollbar-color: ${C.accent} ${C.panel2}; }
+        .ipa-scroll::-webkit-scrollbar { width: 8px; }
+        .ipa-scroll::-webkit-scrollbar-track { background: ${C.panel2}; border-radius: 999px; }
+        .ipa-scroll::-webkit-scrollbar-thumb { background: ${C.accent}; border-radius: 999px; }
+        .ipa-scroll::-webkit-scrollbar-thumb:hover { background: ${C.accentSoft}; }
         @keyframes ipa-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         .ipa-skel { background: linear-gradient(90deg, ${C.panel2} 25%, ${C.line} 37%, ${C.panel2} 63%); background-size: 200% 100%; animation: ipa-shimmer 1.4s ease-in-out infinite; }
         textarea, input, button { font-family: inherit; }
         *:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
+        /* === Layout 2 cột desktop — CSS thuần, không phụ thuộc Tailwind JIT === */
+        .ipa-grid { margin-top: 1rem; }
+        .ipa-col-left, .ipa-col-right { min-width: 0; }
+        @media (min-width: 768px) {
+          .ipa-grid { display: grid; grid-template-columns: 7fr 5fr; gap: 1rem; align-items: stretch; }
+          .ipa-col-left, .ipa-col-right { display: block !important; }
+          .ipa-col-right {
+            padding-left: 1rem; border-left: 1px solid ${C.line};
+          }
+          .ipa-img-sticky { position: sticky; top: 0.5rem; z-index: 5; }
+        }
       `}</style>
 
-      <div className="max-w-6xl mx-auto">
+      <div className="w-full max-w-[1536px] mx-auto">
         {/* ===== Header — DESKTOP (md+) : trái tiêu đề · phải logo trên + badge dưới ===== */}
         <div className="hidden md:flex items-start justify-between gap-3 mb-2 pt-2">
           {titleEl}
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex flex-col items-end gap-5 shrink-0">
             {logoEl}
             {badgeEl}
           </div>
         </div>
 
         {/* ===== Header — MOBILE (<md) : dọc, căn giữa · logo → tiêu đề → badge ===== */}
-        <div className="flex md:hidden flex-col items-center gap-3 mb-2 pt-3">
+        <div className="flex md:hidden flex-col items-center gap-5 mb-2 pt-3">
           <div className="mb-7">{logoEl}</div>
           {titleEl}
           {badgeEl}
         </div>
 
+
         {/* =====================================================
             BỐ CỤC CHÍNH: 1 cột dọc — cấu hình (các bước) rồi tới kết quả.
             (Đã bỏ bố cục 2 cột; nay thống nhất 1 cột ở mọi kích thước.)
         ====================================================== */}
-        <div className="grid grid-cols-1 gap-6 mt-4 items-start">
+        <div className="ipa-grid">
 
-          {/* ───────────── KHỐI 1: CẤU HÌNH (xếp dọc) ───────────── */}
+          {/* ===== CỘT TRÁI: thanh tab + nút + controls (Nguồn & phong cách / Thiết lập & điều chỉnh) ===== */}
+          {/* Cột trái LUÔN hiện (kể cả khi xem Kết quả trên mobile) để thanh tab không biến mất.
+              Nội dung src/cfg tự ẩn theo effectiveControlTab. */}
+          <div className="ipa-col-left">
+
+        {/* ===== P1: THANH TAB (sticky) — Thiết lập | Kết quả ===== */}
+        <div className="py-2 mb-2">
+          <div className={`grid items-stretch ${isDesktop ? "grid-cols-2" : "grid-cols-3"} gap-1.5 rounded-xl p-1`} style={{ background: C.panel2, border: `1px solid ${C.line}` }}>
+            {[{ id: "src", label: "Nguồn & phong cách" }, { id: "cfg", label: "Thiết lập & điều chỉnh" }, { id: "result", label: "Kết quả" }]
+              .filter((t) => !(isDesktop && t.id === "result")) // desktop: Kết quả là cột riêng -> ẩn nút tab
+              .map((t) => {
+              const on = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className="relative flex h-full items-center justify-center rounded-lg px-2 py-2 text-xs sm:text-sm font-semibold leading-tight transition-all duration-200"
+                  style={on
+                    ? { background: C.accent, color: C.onAccent, boxShadow: `0 6px 18px -8px ${C.accent}` }
+                    : { background: "transparent", color: C.textDim }}
+                >
+                  {t.label}
+                  {t.id === "result" && !on && (prompts || genImg) && (
+                    <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full align-middle" style={{ background: C.accent }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* NÚT HÀNH ĐỘNG — "ô thứ 4" của thanh tab, kiểu KHÁC HẲN 3 tab (full-width, solid)
+              để phân biệt. Tự đổi nhãn: chưa có prompt / cần phân tích lại -> "Phân tích &
+              Tạo prompt"; chỉ đổi tham số nhẹ -> "Cập nhật thay đổi". Bấm xong nhảy tab Kết quả. */}
+          {/* NÚT HÀNH ĐỘNG — chỉ MOBILE ở thanh tab; desktop chuyển sang cột Kết quả */}
+          <div className="md:hidden mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
+            {actionButton}
+          </div>
+
+          {/* LỖI (global) */}
+          {error && (
+            <div className="mt-2 flex items-start gap-2 rounded-xl p-3 text-sm" style={{ background: "#2a1a18", border: `1px solid #5e3b35`, color: "#e8b9b0" }}>
+              <AlertCircle className="w-5 h-5 shrink-0" /> {error}
+            </div>
+          )}
+        </div>
+
+          {/* TAB 1: NGUỒN & PHONG CÁCH */}
+          {effectiveControlTab === "src" && (
           <div>
             {/* ===== BƯỚC 1: NGUỒN ẢNH & PHONG CÁCH ===== */}
-            <StepLabel n={1}>Nguồn ảnh &amp; phong cách</StepLabel>
+            <StepLabel n={1} tight>Nguồn ảnh &amp; phong cách</StepLabel>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <UploadBox
@@ -1866,92 +2069,11 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               )}
 
               {styleImg && (
-                <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.accentSoft }}>
+                <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.text}}>
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   Đang dùng ảnh STYLE làm nguồn phong cách. Preset bị vô hiệu để tránh xung đột.
                 </div>
               )}
-
-              {/* Chips gom theo NHÓM. Mỗi nhóm có nhãn nhỏ + grid chip. */}
-              {Array.from(new Set(STYLE_PRESETS.map((p) => p.group))).map((grp) => (
-                <div key={grp} className="mb-2.5 last:mb-0">
-                  <p className="text-[11px] uppercase tracking-[0.16em] mb-1.5" style={{ color: C.textFaint }}>{grp}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {STYLE_PRESETS.filter((p) => p.group === grp).map((p) => {
-                      const on = stylePreset === p.id && !styleImg;                                  // CHÍNH
-                      const onB = blendMode && styleB === p.id && p.id !== stylePreset && !styleImg;  // PHỤ
-                      const handleClick = () => {
-                        if (styleImg) return;
-                        if (!blendMode) {
-                          // Chế độ đơn: toggle style chính như cũ.
-                          changeStylePreset(stylePreset === p.id ? null : p.id);
-                          return;
-                        }
-                        // Chế độ trộn: click chính → bỏ chính; click phụ → bỏ phụ;
-                        // chưa có chính → đặt làm chính; còn lại → đặt làm phụ.
-                        if (p.id === stylePreset) { changeStylePreset(null); return; }
-                        if (p.id === styleB) { changeStyleB(null); return; }
-                        if (!stylePreset) { changeStylePreset(p.id); return; }
-                        changeStyleB(p.id);
-                      };
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={handleClick}
-                          onMouseEnter={() => setPresetHover(p.id)}
-                          onMouseLeave={() => setPresetHover(null)}
-                          disabled={!!styleImg}
-                          title={p.desc}
-                          className="relative rounded-lg px-2.5 py-2 text-left transition-all duration-150"
-                          style={{
-                            ...(on ? activeBtn : onB ? activeBtnSecondary : idleBtn),
-                            cursor: styleImg ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          {(() => {
-                            const src = STYLE_IMAGES[p.id];
-                            return src ? (
-                              <img
-                                src={src}
-                                alt={p.label}
-                                loading="lazy"
-                                className="w-full object-cover rounded-md mb-1.5"
-                                style={{ aspectRatio: "16 / 9", border: `1px solid ${on ? C.onAccent : C.lineSoft}` }}
-                              />
-                            ) : (
-                              <div
-                                className="w-full rounded-md mb-1.5 flex items-center justify-center"
-                                style={{ aspectRatio: "16 / 9", background: C.panel2, border: `1px dashed ${C.line}` }}
-                              >
-                                <ImageIcon className="w-4 h-4" style={{ color: C.textFaint }} />
-                              </div>
-                            );
-                          })()}
-                          {/* 4a — dấu CHECK ở góc trên-trái thumbnail khi preset đang được chọn
-                              (chính: nền onAccent/check accent; phụ blend: nền accent/check onAccent). */}
-                          {(on || onB) && (
-                            <span
-                              className="absolute top-1 left-1 z-10 inline-flex items-center justify-center w-[18px] h-[18px] rounded-full"
-                              style={{ background: on ? C.onAccent : C.accent, boxShadow: `0 1px 4px ${C.bg}88` }}
-                            >
-                              <Check className="w-3 h-3" strokeWidth={3} style={{ color: on ? C.accent : C.onAccent }} />
-                            </span>
-                          )}
-                          <div className="text-[12px] font-semibold leading-tight" style={{ color: on ? C.onAccent : C.text }}>{p.label}</div>
-                          {blendMode && (on || onB) && (
-                            <span
-                              className="absolute top-1 right-1 rounded px-1 text-[8px] font-bold uppercase tracking-wider leading-tight"
-                              style={{ background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}
-                            >
-                              {on ? "Chính" : "Phụ"}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
 
               {/* Panel mô tả động: ưu tiên preset đang hover, nếu không thì đang chọn. */}
               {!styleImg && (() => {
@@ -1959,7 +2081,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 const shown = STYLE_PRESETS.find((p) => p.id === shownId);
                 return (
                   <div
-                    className="mt-3 rounded-lg px-3 py-2.5 text-xs leading-snug min-h-[52px] flex items-center"
+                    className="mt-3 rounded-lg px-3 py-2.5 text-xs leading-snug h-14 overflow-y-auto ipa-scroll"
                     style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: shown ? C.text : C.textDim }}
                   >
                     {shown ? (
@@ -2001,22 +2123,136 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   )}
                 </div>
               )}
+              
+              {/* Chips gom theo NHÓM. Mỗi nhóm có nhãn nhỏ + grid chip. */}
+              {Array.from(new Set(STYLE_PRESETS.map((p) => p.group))).map((grp, gi) => (
+                <div key={grp} className={`mb-2.5 last:mb-0 ${gi === 0 ? "mt-4" : ""}`}>
+                  <p className="text-[11px] uppercase tracking-[0.16em] mb-1.5" style={{ color: C.textFaint }}>{grp}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {STYLE_PRESETS.filter((p) => p.group === grp).map((p) => {
+                      const on = stylePreset === p.id && !styleImg;                                  // CHÍNH
+                      const onB = blendMode && styleB === p.id && p.id !== stylePreset && !styleImg;  // PHỤ
+                      const handleClick = () => {
+                        if (styleImg) return;
+                        if (!blendMode) {
+                          // Chế độ đơn: toggle style chính như cũ.
+                          changeStylePreset(stylePreset === p.id ? null : p.id);
+                          return;
+                        }
+                        // Chế độ trộn: click chính → bỏ chính; click phụ → bỏ phụ;
+                        // chưa có chính → đặt làm chính; còn lại → đặt làm phụ.
+                        if (p.id === stylePreset) { changeStylePreset(null); return; }
+                        if (p.id === styleB) { changeStyleB(null); return; }
+                        if (!stylePreset) { changeStylePreset(p.id); return; }
+                        changeStyleB(p.id);
+                      };
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={handleClick}
+                          onMouseEnter={() => setPresetHover(p.id)}
+                          onMouseLeave={() => setPresetHover(null)}
+                          disabled={!!styleImg}
+                          title={p.desc}
+                          className="group relative rounded-lg px-2.5 py-2 text-left transition-all duration-150"
+                          style={{
+                            ...(on ? activeBtn : onB ? activeBtnSecondary : idleBtn),
+                            cursor: styleImg ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          <div className="relative mb-1.5">
+                          {(() => {
+                            const src = STYLE_IMAGES[p.id];
+                            return src ? (
+                              <img
+                                src={src}
+                                alt={p.label}
+                                loading="lazy"
+                                className="w-full object-cover rounded-md block"
+                                style={{ aspectRatio: "16 / 9", border: `1px solid ${on ? C.onAccent : C.lineSoft}` }}
+                              />
+                            ) : (
+                              <div
+                                className="w-full rounded-md flex items-center justify-center"
+                                style={{ aspectRatio: "16 / 9", background: C.panel2, border: `1px dashed ${C.line}` }}
+                              >
+                                <ImageIcon className="w-4 h-4" style={{ color: C.textFaint }} />
+                              </div>
+                            );
+                          })()}
+                          {/* Nút kính lúp — góc phải-dưới banner. Mobile: luôn hiện; desktop: chỉ hiện khi hover card (group-hover).
+                              Dùng <span role=button> vì card cha là <button> (không lồng button). stopPropagation để không chọn preset. */}
+                          {STYLE_IMAGES[p.id] && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              title="Phóng to ảnh"
+                              aria-label={`Phóng to ảnh ${p.label}`}
+                              onClick={(e) => { e.stopPropagation(); setZoomStyle(p); }}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setZoomStyle(p); } }}
+                              className="absolute bottom-0.5 right-0.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-25 md:opacity-0 md:group-hover:opacity-100 hover:scale-120"
+                              style={{ background: "rgba(0,0,0,0.55)", color: "#9A9A9A", backdropFilter: "blur(2px)" }}
+                            >
+                              <ZoomIn className="w-3.5 h-3.5" />
+                            </span>
+                          )}
+                          </div>
+                          <div className="text-[12px] font-semibold leading-tight" style={{ color: on ? C.onAccent : C.text }}>{p.label}</div>
+                          {blendMode && (on || onB) && (
+                            <span
+                              className="absolute top-1 right-1 rounded px-1 text-[8px] font-bold uppercase tracking-wider leading-tight"
+                              style={{ background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}
+                            >
+                              {on ? "Chính" : "Phụ"}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
-              {stylePreset && !styleImg && (
-                <p className="text-xs mt-2.5" style={{ color: C.accentSoft }}>
-                  {blendMode && styleB && styleB !== stylePreset ? (
-                    <>Đang trộn <strong>{presetName(stylePreset)} {blendRatio}%</strong> × <strong>{presetName(styleB)} {100 - blendRatio}%</strong>. Nạp ảnh STYLE bất kỳ lúc nào sẽ thay toàn bộ bằng ảnh.</>
-                  ) : (
-                    <>Đang dùng preset <strong>{STYLE_PRESETS.find((p) => p.id === stylePreset)?.label}</strong>. Nạp ảnh STYLE bất kỳ lúc nào sẽ thay preset bằng ảnh.</>
-                  )}
-                </p>
-              )}
             </div>
+          </div>
+          )}
 
+          {/* TAB 2: THIẾT LẬP & ĐIỀU CHỈNH */}
+          {effectiveControlTab === "cfg" && (
+          <div>
             {/* ===== BƯỚC 2: ĐIỀU KHIỂN RENDER ===== */}
-            <StepLabel n={2}>Điều khiển render</StepLabel>
+            <StepLabel n={2} tight>Điều khiển render</StepLabel>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Trục STYLE INTENSITY — luôn bật */}
+              <div className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
+                  <Droplet className="w-4 h-4" /> Độ mạnh áp style
+                </p>
+                <div className="grid grid-cols-4 gap-1.5 mt-4">
+                  {STYLE_INTENSITY_LEVELS.map((lv) => {
+                    const on = styleIntensity === lv.value;
+                    return (
+                      <button
+                        key={lv.value}
+                        onClick={() => changeStyleIntensity(lv.value)}
+                        className="rounded-lg px-1.5 py-2 text-center transition-all"
+                        style={on ? activeBtn : idleBtn}
+                      >
+                        <div className="text-[11px] font-bold" style={{ color: on ? C.onAccent : C.accentSoft }}>{lv.short}</div>
+                        <div className="text-[10px] leading-tight mt-0.5" style={{ color: on ? C.onAccent : C.textDim }}>{lv.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Đã bỏ danh sách 6 yếu tố (icon + tên) và thanh cường độ.
+                    Chỉ giữ mô tả chi tiết cho mức độ mạnh áp style đang chọn. */}
+                <p className="mt-3.5 text-xs leading-relaxed" style={{ color: C.textDim }}>
+                  {STYLE_INTENSITY_LEVELS[styleIntensity]?.affects}
+                </p>
+              </div>
+
               {/* Trục GEOMETRY — luôn bật. Có ảnh MODEL: khóa hình học theo
                   model. Không có MODEL: điều khiển "kỷ luật không gian" (chặt ↔
                   táo bạo) cho cảnh được sinh mới. */}
@@ -2025,7 +2261,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 style={{ background: C.panel, border: `1px solid ${C.line}` }}
               >
                 <p className="text-xs font-bold uppercase tracking-[0.14em] inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
-                  <Move3d className="w-4 h-4" /> Trục 1 · {mjImageRef ? "Image weight (--iw)" : hasModel ? "Khóa hình học" : "Kỷ luật không gian"}
+                  <Move3d className="w-4 h-4" /> {mjImageRef ? "Image weight (--iw)" : hasModel ? "Khóa hình học" : "Kỷ luật không gian"}
                 </p>
                 <div className="grid grid-cols-4 gap-1.5 mt-4">
                   {GEOMETRY_LEVELS.map((lv) => {
@@ -2091,62 +2327,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 )}
               </div>
 
-              {/* Trục STYLE INTENSITY — luôn bật */}
-              <div className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
-                  <Droplet className="w-4 h-4" /> Trục 2 · Độ mạnh áp style
-                </p>
-                <div className="grid grid-cols-4 gap-1.5 mt-4">
-                  {STYLE_INTENSITY_LEVELS.map((lv) => {
-                    const on = styleIntensity === lv.value;
-                    return (
-                      <button
-                        key={lv.value}
-                        onClick={() => changeStyleIntensity(lv.value)}
-                        className="rounded-lg px-1.5 py-2 text-center transition-all"
-                        style={on ? activeBtn : idleBtn}
-                      >
-                        <div className="text-[11px] font-bold" style={{ color: on ? C.onAccent : C.accentSoft }}>{lv.short}</div>
-                        <div className="text-[10px] leading-tight mt-0.5" style={{ color: on ? C.onAccent : C.textDim }}>{lv.label}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Đã bỏ danh sách 6 yếu tố (icon + tên) và thanh cường độ.
-                    Chỉ giữ mô tả chi tiết cho mức độ mạnh áp style đang chọn. */}
-                <p className="mt-3.5 text-xs leading-relaxed" style={{ color: C.textDim }}>
-                  {STYLE_INTENSITY_LEVELS[styleIntensity]?.affects}
-                </p>
-              </div>
             </div>
-
             {/* ===== BƯỚC 3: NỀN TẢNG & KHUNG HÌNH ===== */}
             <StepLabel n={3}>Nền tảng &amp; khung hình</StepLabel>
 
-            {/* Platform + Aspect cạnh nhau */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Platform */}
-              <div className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] mb-2.5" style={{ color: C.accentSoft }}>Nền tảng render</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {PLATFORMS.map((p) => {
-                    const on = platform === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => changePlatform(p.id)}
-                        className="rounded-xl px-3.5 py-2.5 text-left transition-all duration-200"
-                        style={on ? activeBtn : { background: C.panel2, border: `1px solid ${C.line}` }}
-                      >
-                        <div className="text-sm font-semibold leading-tight" style={{ color: on ? C.onAccent : C.text }}>{p.label}</div>
-                        {p.hint && <div className="text-[11px]" style={{ color: on ? C.onAccent : C.textDim }}>{p.hint}</div>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
+            {/* Tỷ lệ khung (trái) + Negative prompt (phải) — desktop xếp 2 cột, 2 panel cao bằng nhau */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:items-stretch">
               {/* Aspect ratio */}
               <div className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                 <p className="text-xs font-bold uppercase tracking-[0.14em] mb-2.5 inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
@@ -2170,13 +2356,11 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 </div>
                 <p className="text-[11px] mt-2.5" style={{ color: C.textDim }}>
                   {ASPECT_RATIOS.find((a) => a.value === aspectRatio)?.desc}
-                  {platform === "midjourney" && <> · <span style={{ color: C.accentSoft }}>--ar {aspectRatio}</span></>}
                 </p>
               </div>
-            </div>
 
-            {/* Negative prompt — full width */}
-            <div className="mt-3 rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+              {/* Negative prompt */}
+              <div className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
               <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
                   <Ban className="w-4 h-4" /> Negative prompt (cần tránh)
@@ -2190,112 +2374,24 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 </button>
               </div>
               <textarea
+                ref={(el) => { negRef.current = el; fitNeg(el); }}
                 value={negativePrompt}
                 onChange={(e) => changeNegative(e.target.value)}
-                rows={3}
-                className="w-full text-sm rounded-lg px-2.5 py-1.5 resize-y leading-relaxed outline-none"
-                style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text, fontFamily: MONO, fontSize: "12.5px" }}
+                onInput={(e) => fitNeg(e.target)}
+                className="w-full text-sm rounded-lg px-2.5 py-1.5 resize-none leading-relaxed outline-none"
+                style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text, fontFamily: MONO, fontSize: "12.5px", overflowY: "hidden" }}
                 placeholder={NEGATIVE_BY_PLATFORM[platform] || DEFAULT_NEGATIVE}
               />
+              </div>
             </div>
 
-            {/* Action — nút nằm CỐ ĐỊNH trong luồng (không sticky), ngay sau
-                bước 3, đúng thứ tự "điền cấu hình rồi bấm nút cuối". */}
-            <div className="mt-4">
-              {/* Nút khởi tạo CHỈ hiện khi CHƯA có prompt. Sau khi đã có prompt,
-                  mọi cập nhật (kể cả đổi ảnh -> needsReanalyze) đi qua nút "Cập
-                  nhật kết quả" ở khối kết quả, tránh bấm nhầm phân tích lại. */}
-              {!prompts && (
-                <button
-                  onClick={() => analyze()}
-                  disabled={!canAnalyze}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 font-bold transition-all duration-200 disabled:opacity-40"
-                  style={{ background: C.accent, color: C.onAccent, boxShadow: `0 10px 26px -10px ${C.accent}` }}
-                >
-                  {status === "analyzing"
-                    ? (<><Loader2 className="w-5 h-5 animate-spin" /> Đang phân tích...</>)
-                    : (<><ImageIcon className="w-5 h-5" /> Phân tích &amp; Tạo prompt</>)}
-                </button>
-              )}
-
-              {/* THANH TIẾN TRÌNH — hiện trong lúc Agent gọi API (phân tích ảnh
-                  hoặc cập nhật prompt). Hiệu ứng mượt nhờ CSS transition width:
-                  interval cập nhật mỗi 90ms còn transition kéo dài 220ms nên
-                  thanh "trôi" liên tục thay vì giật cục. KHÔNG tốn token. */}
-              {progressActive && (
-                <div className="mt-3 ipa-anim" aria-live="polite">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-semibold" style={{ color: C.accentSoft }}>
-                      {status === "analyzing" ? "Đang phân tích ảnh & dựng cấu trúc…" : "Đang tạo lại prompt…"}
-                    </span>
-                    <span className="text-[11px] tabular-nums" style={{ color: C.textDim, fontFamily: MONO }}>
-                      {Math.round(progress)}%
-                    </span>
-                  </div>
-                  <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: C.panel2, border: `1px solid ${C.line}` }}>
-                    <div
-                      style={{
-                        width: `${progress}%`,
-                        height: "100%",
-                        borderRadius: 999,
-                        background: `linear-gradient(90deg, ${C.accent}, ${C.accentSoft})`,
-                        boxShadow: `0 0 12px -2px ${C.accent}`,
-                        transition: "width 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {error && (
-              <div className="mt-4 flex items-start gap-2 rounded-xl p-3 text-sm" style={{ background: "#2a1a18", border: `1px solid #5e3b35`, color: "#e8b9b0" }}>
-                <AlertCircle className="w-5 h-5 shrink-0" /> {error}
-              </div>
-            )}
-          </div>
-
-          {/* ───────────── KHỐI 2: KẾT QUẢ (nằm dưới cùng) ───────────── */}
-          <div>
-            {/* 4d — SKELETON: trong lúc phân tích lần đầu, panel kết quả hiện các
-                dòng shimmer mô phỏng bố cục prompt sắp đổ vào (client-side, 0 token).
-                Rebuild (đã có prompt) giữ nguyên prompt cũ nên không cần skeleton. */}
-            {status === "analyzing" && (
-              <div className="ipa-anim rounded-2xl p-5" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: C.accent }} />
-                  <span className="text-sm font-semibold" style={{ color: C.accentSoft }}>Đang dựng kết quả…</span>
-                </div>
-                <div className="space-y-2.5">
-                  <div className="ipa-skel h-4 rounded" style={{ width: "42%" }} />
-                  <div className="ipa-skel h-3 rounded" style={{ width: "100%" }} />
-                  <div className="ipa-skel h-3 rounded" style={{ width: "94%" }} />
-                  <div className="ipa-skel h-3 rounded" style={{ width: "80%" }} />
-                  <div className="ipa-skel h-28 rounded-xl" style={{ marginTop: "1rem" }} />
-                  <div className="ipa-skel h-3 rounded" style={{ width: "88%" }} />
-                  <div className="ipa-skel h-3 rounded" style={{ width: "62%" }} />
-                </div>
-              </div>
-            )}
-            {!analysis && !prompts && status !== "analyzing" && (
-              <div
-                className="rounded-2xl p-8 flex flex-col items-center justify-center text-center min-h-[196px]"
-                style={{ background: C.panel, border: `1px dashed ${C.line}` }}
-              >
-                <Sparkles className="w-8 h-8 mb-3" style={{ color: C.textFaint }} />
-                <p className="text-sm font-semibold" style={{ color: C.textDim }}>Kết quả sẽ hiện ở đây</p>
-                <p className="text-xs mt-1.5 max-w-[360px]" style={{ color: C.textFaint }}>
-                  Chọn nguồn phong cách (ảnh STYLE hoặc preset),<br />
-                  tùy chọn ảnh MODEL, rồi bấm <strong style={{ color: C.textDim }}>“Phân tích &amp; Tạo prompt”</strong>.
-                </p>
-              </div>
-            )}
-
+            {/* Điều Chỉnh Nâng Cao — chuyển từ khu Kết quả sang Tab 2.
+                Có analysis -> panel sáng (bấm mở); chưa có -> placeholder MỜ. */}
             {/* Bảng phân tích — gói trong khối collapsible "Điều Chỉnh Nâng Cao".
                 MẶC ĐỊNH THU GỌN: chỉ hiện header; bấm để xổ toàn bộ 13 field
                 (11 STYLE + 2 MODEL) ra chỉnh tay. */}
             {analysis && (
-              <div className="ipa-anim">
+              <div className="ipa-anim mt-3">
                 {/* Header bấm để mở/đóng. chevron xoay theo trạng thái. */}
                 <button
                   type="button"
@@ -2304,7 +2400,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   className="w-full flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-left transition-colors"
                   style={{ background: C.panel, border: `1px solid ${C.line}` }}
                 >
-                  <span className="text-lg flex items-center gap-2 font-bold tracking-tight" style={{ color: C.text }}>
+                  <span className="text-[15px] flex items-center gap-2 font-bold tracking-tight" style={{ color: C.text }}>
                     <Palette className="w-4 h-4" style={{ color: C.accent }} /> Điều Chỉnh Nâng Cao
                   </span>
                   <ChevronDown
@@ -2357,26 +2453,82 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               </div>
             )}
 
-            {prompts && (
-              <div className="mt-8 ipa-anim">
-                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <h2 className="text-lg font-bold tracking-tight" style={{ color: C.text }}>Prompt render <span style={{ color: C.accent }}>(English)</span></h2>
-                  {/* MỘT nút gộp. Tự định tuyến: đổi preset -> analyze (đọc lại
-                      nguồn); còn lại -> rebuild (text-only, rẻ). */}
-                  {hasPending && (
-                    <button
-                      onClick={() => (needsReanalyze ? analyze(pendingChanges) : rebuildPrompt(pendingChanges))}
-                      disabled={updateBusy}
-                      className="inline-flex items-center gap-1.5 text-sm rounded-lg px-3 py-2 font-semibold transition-all disabled:opacity-50"
-                      style={{ background: C.accent, color: C.onAccent, boxShadow: `0 6px 16px -8px ${C.accent}` }}
-                    >
-                      {updateBusy
-                        ? (<><Loader2 className="w-4 h-4 animate-spin" /> Đang cập nhật...</>)
-                        : (<><RefreshCw className="w-4 h-4" /> Cập nhật kết quả</>)}
-                    </button>
-                  )}
-                </div>
+            {!analysis && (
+              <div className="rounded-2xl px-4 py-3 mt-3 flex items-center justify-between gap-2 cursor-not-allowed" style={{ background: C.panel, border: `1px solid ${C.line}`, opacity: 0.45 }} aria-disabled="true">
+                <span className="text-[15px] flex items-center gap-2 font-bold tracking-tight" style={{ color: C.text }}>
+                  <Palette className="w-4 h-4" style={{ color: C.accent }} /> Điều Chỉnh Nâng Cao
+                </span>
+                <span className="text-[11px]" style={{ color: C.textDim }}>Mở khóa chức năng sau khi bấm "Phân tích"</span>
+              </div>
+            )}
+          </div>
+          )}
+          </div>{/* /CỘT TRÁI */}
 
+          {/* ===== CỘT PHẢI (desktop): KẾT QUẢ — luôn hiện trên desktop; mobile: hiện theo tab ===== */}
+          <div className={(activeTab === "result" ? "" : "hidden ") + "ipa-col-right"}>
+            {/* Desktop: NÚT HÀNH ĐỘNG nằm đầu cột Kết quả */}
+            <div className="hidden md:block mb-5 mt-2">{actionButton}</div>
+            {/* THANH TIẾN TRÌNH — dưới nút Phân tích, trong cột Kết quả. KHÔNG tốn token. */}
+            {progressActive && (
+              <div className="mb-3 ipa-anim" aria-live="polite">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold" style={{ color: C.accentSoft }}>
+                    {genBusy ? (genImg ? "Đang tạo lại ảnh…" : "Đang tạo ảnh…") : status === "analyzing" ? "Đang phân tích ảnh & dựng cấu trúc…" : "Đang tạo lại prompt…"}
+                  </span>
+                  <span className="text-[11px] tabular-nums" style={{ color: C.textDim, fontFamily: MONO }}>
+                    {Math.round(progress)}%
+                  </span>
+                </div>
+                <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: C.panel2, border: `1px solid ${C.line}` }}>
+                  <div
+                    style={{
+                      width: `${progress}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      background: `linear-gradient(90deg, ${C.accent}, ${C.accentSoft})`,
+                      boxShadow: `0 0 12px -2px ${C.accent}`,
+                      transition: "width 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            {/* 4d — SKELETON: trong lúc phân tích lần đầu, panel kết quả hiện các
+                dòng shimmer mô phỏng bố cục prompt sắp đổ vào (client-side, 0 token).
+                Rebuild (đã có prompt) giữ nguyên prompt cũ nên không cần skeleton. */}
+            {status === "analyzing" && (
+              <div className="ipa-anim rounded-2xl p-5" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: C.accent }} />
+                  <span className="text-sm font-semibold" style={{ color: C.accentSoft }}>Đang dựng kết quả…</span>
+                </div>
+                <div className="space-y-2.5">
+                  <div className="ipa-skel h-4 rounded" style={{ width: "42%" }} />
+                  <div className="ipa-skel h-3 rounded" style={{ width: "100%" }} />
+                  <div className="ipa-skel h-3 rounded" style={{ width: "94%" }} />
+                  <div className="ipa-skel h-3 rounded" style={{ width: "80%" }} />
+                  <div className="ipa-skel h-28 rounded-xl" style={{ marginTop: "1rem" }} />
+                  <div className="ipa-skel h-3 rounded" style={{ width: "88%" }} />
+                  <div className="ipa-skel h-3 rounded" style={{ width: "62%" }} />
+                </div>
+              </div>
+            )}
+            {!analysis && !prompts && status !== "analyzing" && (
+              <div
+                className="rounded-2xl p-8 flex flex-col items-center justify-center text-center min-h-[196px]"
+                style={{ background: C.panel, border: `1px dashed ${C.line}` }}
+              >
+                <Sparkles className="w-8 h-8 mb-3" style={{ color: C.textFaint }} />
+                <p className="text-sm font-semibold" style={{ color: C.textDim }}>Kết quả sẽ hiện ở đây</p>
+                <p className="text-xs mt-1.5 max-w-[360px]" style={{ color: C.textFaint }}>
+                  Chọn nguồn phong cách (ảnh STYLE hoặc preset),<br />
+                  tùy chọn ảnh MODEL, rồi bấm <strong style={{ color: C.textDim }}>“Phân tích &amp; Tạo prompt”</strong>.
+                </p>
+              </div>
+            )}
+
+            {/* Thay đổi đang chờ áp dụng (nếu có) */}
                 {/* Banner liệt kê CHÍNH XÁC từng thay đổi đang chờ (so với
                     snapshot lúc tạo prompt). Mỗi dòng: field + "cũ → mới", hoặc
                     "đã chỉnh sửa" với field dạng văn bản. Viền terracotta nếu
@@ -2385,7 +2537,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   <div className="mb-3 rounded-xl p-3 text-xs leading-snug" style={{ background: C.panel2, border: `1px solid ${C.neg}66`, color: C.accentSoft }}>
                     <div className="flex items-center gap-2 mb-2 font-semibold" style={{ color: C.neg }}>
                       {needsReanalyze ? <AlertCircle className="w-4 h-4 shrink-0" /> : <RefreshCw className="w-4 h-4 shrink-0" />}
-                      <span>Bấm “Cập nhật kết quả” sẽ áp dụng:</span>
+                      <span>Bấm “Cập nhật thay đổi” sẽ áp dụng:</span>
                     </div>
                     <ul className="space-y-1 mb-2">
                       {pendingChanges.map((c) => (
@@ -2408,39 +2560,127 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                     <div style={{ color: C.textDim }}>{costNote}</div>
                   </div>
                 )}
+
+            {/* IMAGE — lên trên cùng khu Kết quả, dính theo cuộn (sticky) */}
+                {/* === RENDER ẢNH bằng gpt-image-2 (ChatGPT) — chỉ Nano Banana + có MODEL === */}
+                {platform === "nanobanana" && prompts?.nanobanana && modelImg && (
+                  <div className="mt-3 rounded-2xl p-4 ipa-img-sticky" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+                    <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
+                      <div>
+                        <span className="font-semibold" style={{ color: C.accentSoft }}>Image</span>
+                      </div>
+                      <button
+                        onClick={renderImage}
+                        disabled={genStatus === "generating"}
+                        className={`inline-flex items-center gap-2 text-[15px] font-semibold rounded-lg px-4 py-2.5 transition-all ${genStatus === "generating" ? "" : "ipa-glow"}`}
+                        style={{ border: `1px solid ${C.accent}`, color: genStatus === "generating" ? C.textDim : C.onAccent, background: genStatus === "generating" ? C.panel2 : C.accent, opacity: genStatus === "generating" ? 0.7 : 1, cursor: genStatus === "generating" ? "default" : "pointer" }}
+                      >
+                        {genStatus === "generating"
+                          ? (<><Loader2 className="w-5 h-5 animate-spin" /> Đang tạo…</>)
+                          : genImg
+                            ? (<><ImageIcon className="w-5 h-5" /> Tạo lại</>)
+                            : (<><ImageIcon className="w-5 h-5" /> Tạo ảnh</>)}
+                      </button>
+                    </div>
+                    
+                    {genStatus === "error" && genError && (
+                      <div className="rounded-lg p-2.5 text-xs mb-2.5 whitespace-pre-wrap" style={{ background: `${C.neg}1a`, border: `1px solid ${C.neg}55`, color: C.neg }}>
+                        {genError}
+                      </div>
+                    )}
+
+                    {genStatus === "generating" && (
+                      <div className="rounded-xl flex items-center justify-center" style={{ aspectRatio: "16 / 10", background: C.inputBg, border: `1px dashed ${C.lineSoft}`, color: C.textDim }}>
+                        <span className="inline-flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> đang dựng ảnh…</span>
+                      </div>
+                    )}
+
+                    {genImg && genStatus !== "generating" && (
+                      <div>
+                        {/* Hold-to-compare: giữ (chuột/cảm ứng) trực tiếp trên ảnh -> lộ ảnh MODEL gốc; thả -> về ảnh AI */}
+                        <div
+                          className="relative rounded-xl overflow-hidden select-none"
+                          style={{ border: `1px solid ${C.line}`, touchAction: "none", cursor: "pointer", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+                          onPointerDown={() => setHoldOrig(true)}
+                          onPointerUp={() => setHoldOrig(false)}
+                          onPointerLeave={() => setHoldOrig(false)}
+                          onPointerCancel={() => setHoldOrig(false)}
+                          onContextMenu={(e) => e.preventDefault()}
+                        >
+                          {/* Ảnh AI: quyết định kích thước khung -> khung không "nhảy" khi đổi ảnh */}
+                          <img src={genImg} alt="Kết quả gpt-image-2" className="block w-full" draggable={false} style={{ WebkitTouchCallout: "none", pointerEvents: "none" }} />
+                          {/* Ảnh MODEL gốc: overlay object-contain, nền tối phủ kín vì khác tỷ lệ; chỉ hiện khi đang giữ */}
+                          <img
+                            src={`data:${modelImg.mediaType};base64,${modelImg.data}`}
+                            alt="Ảnh gốc MODEL"
+                            draggable={false}
+                            className="absolute inset-0 w-full h-full object-contain transition-opacity duration-75"
+                            style={{ background: C.bg, opacity: holdOrig ? 1 : 0, pointerEvents: "none" }}
+                          />
+                          {/* Nhãn trạng thái */}
+                          <span className="absolute top-2 left-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: holdOrig ? C.accentSoft : C.text, pointerEvents: "none" }}>
+                            {holdOrig ? "Gốc (MODEL)" : "AI tạo"}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-[11px]" style={{ color: C.textDim }}>Nhấn & giữ trên ảnh để xem ảnh gốc MODEL · thả ra về ảnh AI</span>
+                          <a href={genImg} download="interior-gpt-image.png" className="inline-flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5" style={{ border: `1px solid ${C.accent}`, color: C.accent }}>
+                            <Download className="w-3.5 h-3.5" /> Tải ảnh
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+            {/* Đường kẻ ngăn cách giữa Image và Prompt */}
+            {platform === "nanobanana" && prompts?.nanobanana && modelImg && (
+              <div className="my-6" style={{ borderTop: `1px solid ${C.line}` }} />
+            )}
+
+            {/* PROMPT RENDER — xuống dưới Image */}
+            {prompts && (
+              <div className="ipa-anim">
+                <h2 className="text-lg font-bold tracking-tight mb-3" style={{ color: C.text }}>Prompt render <span style={{ color: C.accent }}>(English)</span></h2>
                 <div className="space-y-3">
                   {PLATFORMS.filter((p) => prompts[p.id]).map((p) => (
                     <div key={p.id} className="rounded-2xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
-                      <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
                         <div>
                           <span className="font-semibold" style={{ color: C.accentSoft }}>{p.label}</span>
                           {p.hint && <span className="ml-2 text-xs" style={{ color: C.textDim }}>{p.hint}</span>}
                         </div>
-                        <button
-                          onClick={() => copy(p.id, prompts[p.id])}
-                          className="inline-flex items-center gap-1 text-sm rounded-lg px-3 py-1.5 transition-colors"
-                          style={{ border: `1px solid ${copied === p.id ? C.pos : C.accent}`, color: copied === p.id ? C.pos : C.accent, background: "transparent" }}
-                        >
-                          {copied === p.id
-                            ? (<><Check className="w-4 h-4" /> Đã copy</>)
-                            : (<><Copy className="w-4 h-4" /> Copy</>)}
-                        </button>
+                        {/* Copy luôn hiện (lấy nhanh không cần mở); nút Xem/Ẩn để bung prompt */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => copy(p.id, prompts[p.id])}
+                            className="inline-flex items-center gap-1 text-sm rounded-lg px-3 py-1.5 transition-colors"
+                            style={{ border: `1px solid ${copied === p.id ? C.pos : C.accent}`, color: copied === p.id ? C.pos : C.accent, background: "transparent" }}
+                          >
+                            {copied === p.id
+                              ? (<><Check className="w-4 h-4" /> Đã copy</>)
+                              : (<><Copy className="w-4 h-4" /> Copy</>)}
+                          </button>
+                          <button
+                            onClick={() => setPromptOpen((v) => !v)}
+                            className="inline-flex items-center gap-1 text-sm rounded-lg px-3 py-1.5 transition-colors"
+                            style={{ border: `1px solid ${C.line}`, color: C.textDim, background: "transparent" }}
+                          >
+                            <ChevronDown className="w-4 h-4 transition-transform" style={{ transform: promptOpen ? "rotate(180deg)" : "none" }} />
+                            {promptOpen ? "Ẩn" : "Xem"}
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#ccd6e2", fontFamily: MONO, fontSize: "12.5px" }}>{prompts[p.id]}</p>
+                      {promptOpen && (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#ccd6e2", fontFamily: MONO, fontSize: "12.5px" }}>{prompts[p.id]}</p>
+                      )}
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
 
-                {platform === "midjourney" && (modelImg || styleImg) && (
-                  <div className="mt-3 rounded-xl p-3 text-xs leading-relaxed" style={{ background: C.panel2, border: `1px solid ${C.accent}44`, color: C.accentSoft }}>
-                    <strong style={{ color: C.accent }}>Image-reference với Midjourney:</strong>
-                    <br />1. Upload ảnh lên Discord/MJ web (kéo–thả) để lấy <strong>URL ảnh</strong> (hoặc dùng link ảnh online công khai).
-                    {modelImg && (<><br />2. Thay <code style={{ fontFamily: MONO }}>{"<MODEL_IMAGE_URL>"}</code> ở đầu prompt bằng URL ảnh MODEL — đây là <strong>image-prompt</strong> giữ bố cục; độ bám chỉnh bằng <strong>--iw</strong> qua Trục 1.</>)}
-                    {styleImg && (<><br />{modelImg ? "3" : "2"}. Thay <code style={{ fontFamily: MONO }}>{"<STYLE_IMAGE_URL>"}</code> trong <strong>--sref</strong> bằng URL ảnh STYLE (mượn phong cách).</>)}
-                    <br />{modelImg && styleImg ? "4" : "3"}. Dán toàn bộ vào <strong>/imagine</strong> trên Midjourney.
-                  </div>
-                )}
-
+            {/* LỊCH SỬ PROMPT */}
                 {/* BANNER LỊCH SỬ — tối đa 8 phiên bản prompt gần nhất (mới
                     nhất ở trên). Mỗi mục lưu kèm prompt + 13 field analysis +
                     tham số render để XEM LẠI và DÙNG LẠI (khôi phục). */}
@@ -2458,16 +2698,16 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                         const histPreset = h.params?.stylePreset ? presetName(h.params.stylePreset) : (h.params ? "Ảnh STYLE" : null);
                         return (
                           <div key={h.id} className="rounded-lg px-2.5 py-2" style={{ background: C.panel2, border: `1px solid ${C.lineSoft}` }}>
-                            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2 mb-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[11px] font-semibold" style={{ color: C.accentSoft }}>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
+                              <div className="flex items-center gap-1.5 flex-nowrap min-w-0 overflow-hidden order-1 w-full md:w-auto md:flex-1">
+                                <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: C.accentSoft }}>
                                   {idx === 0 ? "Mới nhất" : `Lần ${history.length - idx}`}
                                 </span>
                                 <span className="text-[11px]" style={{ color: C.textFaint }}>· {h.timeLabel}</span>
                                 {histPlatform && <span className="text-[11px]" style={{ color: C.textFaint }}>· {histPlatform}</span>}
                                 {histPreset && <span className="text-[11px] font-bold" style={{ color: C.accent }}>· {histPreset}</span>}
                               </div>
-                              <div className="flex items-center gap-1.5 sm:ml-auto">
+                              <div className="flex items-center gap-1.5 shrink-0 order-3 md:order-2 md:ml-auto">
                                 <button
                                   onClick={() => setExpandedHistory(expanded ? null : h.id)}
                                   className="text-[11px] rounded px-1.5 py-0.5 transition-colors"
@@ -2491,10 +2731,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                                   <RotateCcw className="w-3 h-3" /> Dùng lại
                                 </button>
                               </div>
-                            </div>
-
                             {h.changes.length > 0 && (
-                              <ul className="space-y-0.5">
+                              <ul className="space-y-0.5 order-2 basis-full md:order-3">
                                 {h.changes.map((c) => (
                                   <li key={c.key} className="flex flex-wrap items-baseline gap-x-1.5">
                                     <span style={{ color: C.textFaint }}>•</span>
@@ -2513,39 +2751,65 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                                 ))}
                               </ul>
                             )}
+                            </div>
 
-                            {/* Panel xem lại: prompt đã lưu + 13 field analysis */}
+                            {/* Panel xem lại: ẢNH lên trên; prompt + 13 field analysis xuống dưới, LUÔN thu gọn */}
                             {expanded && (
                               <div className="mt-2 pt-2 space-y-2.5" style={{ borderTop: `1px solid ${C.lineSoft}` }}>
-                                {h.prompts && Object.keys(h.prompts).map((pid) => {
-                                  const ck = `hist-${h.id}-${pid}`;
-                                  return (
-                                    <div key={pid}>
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.accentSoft }}>Prompt · {platformName(pid)}</span>
-                                        <button
-                                          onClick={() => copy(ck, h.prompts[pid])}
-                                          className="ml-auto inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5"
-                                          style={{ border: `1px solid ${copied === ck ? C.pos : C.accent}`, color: copied === ck ? C.pos : C.accent, background: "transparent" }}
-                                        >
-                                          {copied === ck ? (<><Check className="w-3 h-3" /> Đã copy</>) : (<><Copy className="w-3 h-3" /> Copy</>)}
-                                        </button>
-                                      </div>
-                                      <p className="rounded p-2 whitespace-pre-wrap" style={{ background: C.inputBg, border: `1px solid ${C.lineSoft}`, color: "#ccd6e2", fontFamily: MONO, fontSize: "11px", lineHeight: 1.5 }}>{h.prompts[pid]}</p>
-                                    </div>
-                                  );
-                                })}
-                                {h.analysis && (
+                                {h.genImg && (
                                   <div>
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.accentSoft }}>Phân tích ({Object.keys(h.analysis).length} mục)</span>
-                                    <ul className="mt-1 space-y-0.5">
-                                      {Object.entries(h.analysis).map(([k, v]) => (
-                                        <li key={k} className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
-                                          <span className="font-medium" style={{ color: C.textDim }}>{k.replace(/_/g, " ")}:</span>
-                                          <span style={{ color: C.text }}>{String(v)}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.accentSoft }}>Ảnh đã tạo</span>
+                                    <img src={h.genImg} alt="Ảnh đã lưu" draggable={false} onContextMenu={(e) => e.preventDefault()} className="mt-1 w-full rounded select-none" style={{ border: `1px solid ${C.lineSoft}`, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", pointerEvents: "none" }} />
+                                  </div>
+                                )}
+
+                                {/* Prompt + 13 cấu trúc — LUÔN thu gọn, bấm để mở */}
+                                {(h.prompts || h.analysis) && (
+                                  <div>
+                                    <button
+                                      onClick={() => setHistDetailOpen(histDetailOpen === h.id ? null : h.id)}
+                                      className="inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 transition-colors"
+                                      style={{ border: `1px solid ${C.line}`, color: C.textDim, background: "transparent" }}
+                                    >
+                                      <ChevronDown className="w-3 h-3 transition-transform" style={{ transform: histDetailOpen === h.id ? "rotate(180deg)" : "none" }} />
+                                      {histDetailOpen === h.id ? "Ẩn prompt & cấu trúc" : "Xem prompt & cấu trúc"}
+                                    </button>
+
+                                    {histDetailOpen === h.id && (
+                                      <div className="mt-2 space-y-2.5">
+                                        {h.prompts && Object.keys(h.prompts).map((pid) => {
+                                          const ck = `hist-${h.id}-${pid}`;
+                                          return (
+                                            <div key={pid}>
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.accentSoft }}>Prompt · {platformName(pid)}</span>
+                                                <button
+                                                  onClick={() => copy(ck, h.prompts[pid])}
+                                                  className="ml-auto inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5"
+                                                  style={{ border: `1px solid ${copied === ck ? C.pos : C.accent}`, color: copied === ck ? C.pos : C.accent, background: "transparent" }}
+                                                >
+                                                  {copied === ck ? (<><Check className="w-3 h-3" /> Đã copy</>) : (<><Copy className="w-3 h-3" /> Copy</>)}
+                                                </button>
+                                              </div>
+                                              <p className="rounded p-2 whitespace-pre-wrap" style={{ background: C.inputBg, border: `1px solid ${C.lineSoft}`, color: "#ccd6e2", fontFamily: MONO, fontSize: "11px", lineHeight: 1.5 }}>{h.prompts[pid]}</p>
+                                            </div>
+                                          );
+                                        })}
+                                        {h.analysis && (
+                                          <div>
+                                            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.accentSoft }}>Phân tích ({Object.keys(h.analysis).length} mục)</span>
+                                            <ul className="mt-1 space-y-0.5">
+                                              {Object.entries(h.analysis).map(([k, v]) => (
+                                                <li key={k} className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
+                                                  <span className="font-medium" style={{ color: C.textDim }}>{k.replace(/_/g, " ")}:</span>
+                                                  <span style={{ color: C.text }}>{String(v)}</span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -2557,15 +2821,31 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   </div>
                   </div>
                 )}
-
-              </div>
-            )}
-          </div>
+          </div>{/* /CỘT PHẢI */}
         </div>
 
-        {/* Footer attribution — bản quyền sản phẩm thuộc về công ty ARTIUS */}
-        <p className="mt-10 text-center text-xs leading-relaxed" style={{ color: C.textDim }}>
-          Sản phẩm <strong style={{ color: C.text }}>“Interior Render Prompt Agent”</strong><br />thuộc về{" "}
+        {/* Mũi tên chuyển tab — chỉ mobile (desktop đã split-view) */}
+        <div className="md:hidden flex items-center justify-center gap-8 mt-8">
+          <button
+            onClick={() => { const o = ["src", "cfg", "result"]; const i = o.indexOf(activeTab); setActiveTab(o[(i + o.length - 1) % o.length]); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="inline-flex items-center justify-center rounded-full w-11 h-11 transition-colors"
+            style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft }}
+            aria-label="Tab trước"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => { const o = ["src", "cfg", "result"]; const i = o.indexOf(activeTab); setActiveTab(o[(i + 1) % o.length]); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="inline-flex items-center justify-center rounded-full w-11 h-11 transition-colors"
+            style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft }}
+            aria-label="Tab sau"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Footer attribution */}
+        <p className="mt-10 text-center text-[12px] leading-relaxed" style={{ color: C.textDim }}>
           <a
             href="https://artius.vn/"
             target="_blank"
@@ -2577,13 +2857,31 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </a>
         </p>
 
-        <p className="mt-3 text-center" style={{ color: C.textFaint }}>
+        <p className="mt-0 text-center" style={{ color: C.textFaint }}>
           <span
-            className="inline-block rounded-md px-2 py-0.5 text-[11px] tracking-wider"
+            className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider"
             style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
-            title="Dấu mốc phiên bản — nếu vẫn thấy số cũ sau khi mở lại thì bạn đang xem bản cache"
           >
             build {APP_VERSION}
+            
+      {/* ===== LIGHTBOX phóng to ảnh Style Preset ===== */}
+      {zoomStyle && (
+        <div
+          onClick={() => setZoomStyle(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
+          style={{ background: "rgba(0,0,0,0.90)", backdropFilter: "blur(2px)" }}
+        >
+          <div className="relative w-full max-w-[920px]" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={STYLE_IMAGES[zoomStyle.id]}
+              alt={zoomStyle.label}
+              className="w-full rounded-xl"
+              style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
+            />
+            <div className="mt-2 text-center text-sm font-regular" style={{ color: "#fff" }}>{zoomStyle.label}</div>
+          </div>
+        </div>
+      )}
           </span>
         </p>
       </div>
