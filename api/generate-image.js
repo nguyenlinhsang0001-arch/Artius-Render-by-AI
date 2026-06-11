@@ -1,24 +1,32 @@
 // =============================================================
-// api/generate-image.js  —  PROXY render ảnh bằng gpt-image-2 (OpenAI)
-// -------------------------------------------------------------
-// Đặt file này tại: api/generate-image.js trong repo (cùng cấp api/generate.js).
-// Vai trò: giữ OPENAI_API_KEY ở server-side (KHÔNG bao giờ lộ ra client) và
-// gọi endpoint images/edits của OpenAI.
+// api/generate-image.js — Vercel serverless proxy cho gpt-image.
 //
-// SETUP TRÊN VERCEL:
-//   Settings → Environment Variables → thêm  OPENAI_API_KEY = sk-...
-//   (Phải hoàn tất Organization Verification trên OpenAI dev console trước,
-//    nếu không các model dòng gpt-image sẽ bị từ chối.)
+// Hỗ trợ HAI endpoint OpenAI tùy theo `mode` từ client:
+//   • mode === "generate" (hoặc không có ảnh) -> POST /v1/images/generations
+//       (text-to-image, KHÔNG ảnh đầu vào). Dùng cho GEOMETRY mức 3
+//       ("Lấy cảm hứng"): cho phép đổi góc máy & phối cảnh.
+//   • mode === "edit" (mặc định) -> POST /v1/images/edits
+//       (gửi MODEL [+ STYLE] làm pixel base). Dùng cho mức 0-2: giữ camera/geometry.
 //
-// CLIENT gửi JSON: { model, prompt, images: [{data(base64), mediaType}], size }
-// PROXY trả JSON:  { b64 }  (ảnh PNG base64, không kèm tiền tố data:)
+// Contract với client (App.jsx -> renderImage):
+//   body = { model, prompt, size, mode, images: [{ data, mediaType }] }
+//     - data: base64 THÔ (không có tiền tố "data:..."), mediaType: "image/jpeg"...
+//     - images RỖNG khi mode === "generate".
+//   Trả về: { b64 } (b64_json của ảnh đầu tiên) — khớp `data?.b64` ở client.
 //
-// LƯU Ý CHI PHÍ: gpt-image tính phí theo token trên tài khoản OpenAI — KHÔNG
-// liên quan token Anthropic. Mỗi request tạo n=1 ảnh.
+// YÊU CẦU TRIỂN KHAI:
+//   - ENV: OPENAI_API_KEY trên Vercel.
+//   - OpenAI Organization Verification đã bật (bắt buộc cho gpt-image).
+//   - Bật Fluid Compute để tránh timeout khi sinh ảnh (ảnh chậm hơn text nhiều).
+//   - Node 18+ runtime: có sẵn global fetch / FormData / Blob.
 // =============================================================
 
-// Nâng giới hạn body (2 ảnh base64 có thể ~3–4MB). Cú pháp config của Vercel.
-export const config = { api: { bodyParser: { sizeLimit: "8mb" } } };
+export const config = {
+  // Sinh ảnh có thể lâu; nâng trần thời gian chạy. Cần Fluid Compute để hiệu lực.
+  maxDuration: 60,
+};
+
+const OPENAI_BASE = "https://api.openai.com/v1";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -26,62 +34,98 @@ export default async function handler(req, res) {
     return;
   }
 
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) {
-    res.status(500).json({ error: "Thiếu OPENAI_API_KEY trong Environment Variables." });
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    res.status(500).json({ error: "Thiếu OPENAI_API_KEY trên Vercel." });
     return;
   }
 
+  // ---- Đọc & parse body (Vercel thường tự parse JSON; vẫn phòng trường hợp string) ----
+  let body = req.body;
+  if (typeof body === "string") {
+    try { body = JSON.parse(body); } catch { body = {}; }
+  }
+  if (!body || typeof body !== "object") body = {};
+
+  const {
+    model = "gpt-image-2",
+    prompt,
+    size = "auto",
+    mode = "edit",
+    images = [],
+  } = body;
+
+  if (!prompt || typeof prompt !== "string") {
+    res.status(400).json({ error: "Thiếu 'prompt'." });
+    return;
+  }
+
+  // Quyết định endpoint: generate khi mode=generate HOẶC không có ảnh đầu vào.
+  const useGenerate = mode === "generate" || !Array.isArray(images) || images.length === 0;
+
   try {
-    // Vercel auto-parse JSON body; phòng trường hợp body là string thì parse lại.
-    const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
-    const { prompt, images, model, size } = body;
+    let openaiRes;
 
-    if (!prompt || !Array.isArray(images) || images.length === 0) {
-      res.status(400).json({ error: "Cần 'prompt' và ít nhất 1 ảnh trong 'images'." });
+    if (useGenerate) {
+      // ---------- images/generations: text-to-image, KHÔNG ảnh ----------
+      openaiRes = await fetch(`${OPENAI_BASE}/images/generations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ model, prompt, size, n: 1 }),
+      });
+    } else {
+      // ---------- images/edits: multipart, gửi MODEL (+STYLE) làm pixel base ----------
+      const form = new FormData();
+      form.append("model", model);
+      form.append("prompt", prompt);
+      form.append("size", size);
+      form.append("n", "1");
+
+      // gpt-image nhận nhiều ảnh qua field lặp "image[]". Ảnh đầu = MODEL (nền),
+      // các ảnh sau = tham chiếu (STYLE).
+      images.forEach((img, i) => {
+        const b64 = (img && img.data) || "";
+        if (!b64) return;
+        const buf = Buffer.from(b64, "base64");
+        const type = (img && img.mediaType) || "image/png";
+        const ext = type.split("/")[1] || "png";
+        const blob = new Blob([buf], { type });
+        form.append("image[]", blob, `image_${i}.${ext}`);
+      });
+
+      openaiRes = await fetch(`${OPENAI_BASE}/images/edits`, {
+        method: "POST",
+        // KHÔNG tự set Content-Type: để fetch tự thêm boundary cho multipart.
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: form,
+      });
+    }
+
+    const raw = await openaiRes.text();
+    if (!openaiRes.ok) {
+      // Chuyển nguyên trạng lỗi của OpenAI để client hiển thị/đọc được.
+      res.status(openaiRes.status).send(raw);
       return;
     }
 
-    // Dựng multipart/form-data cho endpoint images/edits.
-    // (FormData / Blob là global trong Node 18+ — runtime mặc định của Vercel.)
-    const form = new FormData();
-    form.append("model", model || "gpt-image-2");
-    form.append("prompt", prompt);
-    form.append("n", "1");
-    if (size) form.append("size", size);
-
-    // image[] = nhiều ảnh tham chiếu: MODEL (nền/geometry) trước, STYLE sau.
-    images.forEach((img, i) => {
-      const mime = img.mediaType || "image/png";
-      const ext = (mime.split("/")[1] || "png").replace("jpeg", "jpg");
-      const buf = Buffer.from(img.data, "base64");
-      const blob = new Blob([buf], { type: mime });
-      form.append("image[]", blob, `ref_${i}.${ext}`);
-    });
-
-    const r = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}` },
-      body: form,
-    });
-
-    const text = await r.text();
-    if (!r.ok) {
-      // Chuyển nguyên thông điệp lỗi của OpenAI về client để dễ debug.
-      res.status(r.status).send(text);
+    let data = null;
+    try { data = JSON.parse(raw); } catch {
+      res.status(502).json({ error: "OpenAI trả về phản hồi không phải JSON." });
       return;
     }
 
-    const data = JSON.parse(text);
     const b64 = data?.data?.[0]?.b64_json || null;
     if (!b64) {
-      res.status(502).json({ error: "OpenAI không trả về b64_json.", raw: data });
+      res.status(502).json({ error: "OpenAI không trả về ảnh (b64_json).", detail: data });
       return;
     }
 
+    // Khớp với client: ưu tiên đọc data.b64.
     res.status(200).json({ b64 });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: String((e && e.message) || e) });
+  } catch (err) {
+    res.status(500).json({ error: "Lỗi gọi OpenAI image API.", detail: String(err && err.message || err) });
   }
 }
