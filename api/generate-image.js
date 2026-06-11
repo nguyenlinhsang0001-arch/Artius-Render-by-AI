@@ -30,14 +30,14 @@
 
 export const config = {
   // Hobby: tối đa 60. Pro: có thể nâng 300. Cần Fluid Compute mới hiệu lực.
-  maxDuration: 180,
+  maxDuration: 240,
 };
 
 const OPENAI_BASE = "https://api.openai.com/v1";
 
 // Cắt request tới OpenAI sớm hơn maxDuration vài giây để kịp trả lỗi JSON
 // (thay vì để Vercel giết hàm -> 504 trống không đọc được).
-const ABORT_MS = 55_000;
+const ABORT_MS = 230_000;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
