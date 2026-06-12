@@ -174,7 +174,7 @@ const GEOMETRY_LEVELS = [
   { value: 2, label: "Linh hoạt",      short: "Mềm",  shortNoModel: "Linh hoạt",  labelNoModel: "Tự do",       desc: "Giữ góc máy, tỷ lệ phòng & chiều cao trần — được sắp xếp lại nội thất.",
     descNoModel: "Linh hoạt: tự do sắp đặt không gian & góc nhìn, vẫn giữ hợp lý.",
     descMJ: "--iw 1 · cân bằng giữa ảnh MODEL và mô tả." },
-  { value: 3, label: "Lấy cảm hứng",   short: "Mở",   shortNoModel: "Táo bạo",    labelNoModel: "Phá cách",    desc: "Giữ nguyên góc máy theo model. Được tái tạo hình khối & chi tiết kiến trúc vỏ phòng (tường/trần/sàn), cùng khung hình.",
+  { value: 3, label: "Lấy cảm hứng",   short: "Mở",   shortNoModel: "Táo bạo",    labelNoModel: "Phá cách",    desc: "Chỉ còn giữ góc máy & phối cảnh theo Model.",
     descNoModel: "Táo bạo: kiến trúc điêu khắc/biomorphic, góc nhìn lạ, tái diễn giải mạnh.",
     descMJ: "--iw 0.5 · ảnh MODEL chỉ là cảm hứng, tự do diễn giải." },
 ];
