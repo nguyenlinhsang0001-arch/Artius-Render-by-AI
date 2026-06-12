@@ -166,17 +166,13 @@ const PLATFORM_GUIDE = {
 // idx 0..3 dùng để tra GEOMETRY_MATRIX bên dưới.
 const GEOMETRY_LEVELS = [
   { value: 0, label: "Khóa tuyệt đối", short: "Khóa", shortNoModel: "Chặt",      labelNoModel: "Kỷ luật cao", desc: "Giữ y nguyên góc máy, tường, cửa, vị trí đồ đạc.",
-    descNoModel: "Bố cục chặt: tỷ lệ chuẩn xác, đường thẳng đứng, một phòng nhất quán, góc máy ổn định.",
-    descMJ: "--iw 3 · bám ảnh MODEL rất chặt (giữ bố cục & hình khối)." },
+    descNoModel: "Bố cục chặt: tỷ lệ chuẩn xác, đường thẳng đứng, một phòng nhất quán, góc máy ổn định."},
   { value: 1, label: "Bám sát",        short: "Sát",  shortNoModel: "Quy củ",     labelNoModel: "Khá chặt",    desc: "Giữ góc máy & bố cục, được đổi decor/fixture nhỏ.",
-    descNoModel: "Bám sát: bố cục quy củ, hợp lý — cho phép vài điểm nhấn kiến trúc nhẹ.",
-    descMJ: "--iw 2 · bám ảnh MODEL khá chặt, đổi nhẹ chi tiết." },
+    descNoModel: "Bám sát: bố cục quy củ, hợp lý — cho phép vài điểm nhấn kiến trúc nhẹ."},
   { value: 2, label: "Linh hoạt",      short: "Mềm",  shortNoModel: "Linh hoạt",  labelNoModel: "Tự do",       desc: "Giữ góc máy, tỷ lệ phòng & chiều cao trần — được sắp xếp lại nội thất.",
-    descNoModel: "Linh hoạt: tự do sắp đặt không gian & góc nhìn, vẫn giữ hợp lý.",
-    descMJ: "--iw 1 · cân bằng giữa ảnh MODEL và mô tả." },
+    descNoModel: "Linh hoạt: tự do sắp đặt không gian & góc nhìn, vẫn giữ hợp lý."},
   { value: 3, label: "Lấy cảm hứng",   short: "Mở",   shortNoModel: "Táo bạo",    labelNoModel: "Phá cách",    desc: "Giữ nguyên góc máy theo model. Được tái tạo hình khối & chi tiết kiến trúc vỏ phòng (tường/trần/sàn), cùng khung hình.",
-    descNoModel: "Táo bạo: kiến trúc điêu khắc/biomorphic, góc nhìn lạ, tái diễn giải mạnh.",
-    descMJ: "--iw 0.5 · ảnh MODEL chỉ là cảm hứng, tự do diễn giải." },
+    descNoModel: "Táo bạo: kiến trúc điêu khắc/biomorphic, góc nhìn lạ, tái diễn giải mạnh."},
 ];
 
 const STYLE_INTENSITY_LEVELS = [
