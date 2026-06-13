@@ -7,11 +7,11 @@
 //       thường: mọi mức 0-3 đi "edit" để giữ camera bằng pixel.
 //   • mode === "edit" (mặc định) -> POST /v1/images/edits
 //       (gửi MODEL [+ STYLE] làm pixel base). Dùng cho MỌI mức 0-3: giữ camera.
-//       (v31.1) RIÊNG mức Mở (geometry 3): client gửi thêm input_fidelity="low"
-//       để nới bám pixel -> AI tái thiết kế vỏ phòng/kiến trúc mạnh hơn.
+//       (v31.2) LƯU Ý: gpt-image-2 KHÔNG hỗ trợ 'input_fidelity' (trả HTTP 400) —
+//       đừng forward param này; mức Mở nới biến đổi bằng prompt, không bằng API.
 //
 // Contract với client (App.jsx -> renderImage):
-//   body = { model, prompt, size, mode, quality?, input_fidelity?, images: [{ data, mediaType }] }
+//   body = { model, prompt, size, mode, quality?, images: [{ data, mediaType }] }
 //     - data: base64 THÔ (không có tiền tố "data:..."), mediaType: "image/jpeg"...
 //     - images RỖNG khi mode === "generate".
 //   Trả về: { b64 } (b64_json của ảnh đầu tiên) — khớp `data?.b64` ở client.
@@ -66,7 +66,6 @@ export default async function handler(req, res) {
     size = "auto",
     mode = "edit",
     quality = "medium", // "low" | "medium" | "high" | "auto"  -> đòn bẩy chống timeout
-    input_fidelity, // (v31.1) client chỉ gửi ở mức Mở (geometry 3): "low" nới bám pixel
     images = [],
   } = body;
 
@@ -104,9 +103,6 @@ export default async function handler(req, res) {
       form.append("size", size);
       form.append("quality", quality);
       form.append("n", "1");
-      // (v31.1) input_fidelity (nếu client gửi): "low" cho mức Mở -> AI thoát pixel
-      // base nhiều hơn để tái thiết kế kiến trúc, vẫn giữ camera nhờ prompt khóa.
-      if (input_fidelity) form.append("input_fidelity", input_fidelity);
 
       // gpt-image nhận nhiều ảnh qua field lặp "image[]". Ảnh đầu = MODEL (nền),
       // các ảnh sau = tham chiếu (STYLE).
