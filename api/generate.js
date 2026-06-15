@@ -1,23 +1,58 @@
 // =============================================================
-// api/generate.js — VERCEL SERVERLESS FUNCTION (proxy)
-//
-// Vì sao cần file này:
-//   Trong Claude artifact, frontend gọi thẳng api.anthropic.com được là nhờ
-//   một proxy ẩn tự đính API key. Khi deploy ra Vercel, proxy đó không còn,
-//   nên gọi thẳng sẽ bị 401 (thiếu key) + CORS chặn. File này đứng giữa:
-//   frontend gọi "/api/generate" -> hàm này đính x-api-key (đọc từ biến môi
-//   trường, KHÔNG lộ ra browser) rồi forward nguyên payload sang Anthropic.
-//
-// Cách hoạt động:
-//   - Chạy trên server Vercel (Node runtime), không phải trên browser.
-//   - process.env.ANTHROPIC_API_KEY lấy từ Vercel > Settings > Environment
-//     Variables (xem DEPLOY.md).
-//   - requireAuth: verify token đăng nhập trước khi forward (chặn gọi chùa).
+// api/generate.js — proxy Anthropic + đếm prompt theo tài khoản.
+// Zero-import (global Node 18+). Verify token -> lấy username -> sau khi
+// Anthropic trả 2xx thì INCR usage:<user>:prompts trên Upstash Redis.
 // =============================================================
-import { requireAuth } from "../lib/auth.js";
+
+function _b64urlToStr(s) {
+  s = String(s).replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  return atob(s);
+}
+async function _hmacB64url(data) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(process.env.AUTH_SECRET || ""),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+  let bin = ""; for (const b of new Uint8Array(sig)) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+// Trả PAYLOAD {sub, adm, exp} nếu token hợp lệ, ngược lại null.
+async function verifyAuth(req) {
+  if (!process.env.AUTH_SECRET) return null;
+  const h = (req.headers && (req.headers["authorization"] || req.headers["Authorization"])) || "";
+  const m = /^Bearer\s+(.+)$/i.exec(String(h));
+  const token = m ? m[1].trim() : "";
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, sigB64] = parts;
+  const expected = await _hmacB64url(payloadB64);
+  if (sigB64.length !== expected.length) return null;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= sigB64.charCodeAt(i) ^ expected.charCodeAt(i);
+  if (diff !== 0) return null;
+  try {
+    const j = JSON.parse(_b64urlToStr(payloadB64));
+    if (typeof j.exp !== "number" || Math.floor(Date.now() / 1000) >= j.exp) return null;
+    return j;
+  } catch { return null; }
+}
+// INCR 1 key trên Upstash (im lặng nếu chưa cấu hình / lỗi).
+async function redisIncr(key) {
+  const url = process.env.UPSTASH_REDIS_REST_URL, token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return;
+  await fetch(url.replace(/\/+$/, ""), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(["INCR", key]),
+  });
+}
 
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return; // 401 nếu token thiếu/sai/hết hạn
+  const auth = await verifyAuth(req);
+  if (!auth) return res.status(401).json({ error: { message: "Unauthorized" } });
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Chỉ chấp nhận POST" });
@@ -33,8 +68,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Vercel thường đã parse sẵn req.body thành object khi Content-Type là
-    // application/json; phòng trường hợp là string thì stringify lại cho chắc.
     const payload =
       typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
@@ -48,10 +81,13 @@ export default async function handler(req, res) {
       body: payload,
     });
 
-    // Trả nguyên status + JSON của Anthropic về cho frontend. App đang đọc
-    // data.content / data.usage / data.error đúng như format gốc nên không cần
-    // sửa gì thêm phía client.
     const data = await upstream.json();
+
+    // Chỉ đếm khi Anthropic trả thành công. Không để lỗi Redis làm hỏng response.
+    if (upstream.ok) {
+      try { await redisIncr(`usage:${auth.sub}:prompts`); } catch { /* ignore */ }
+    }
+
     return res.status(upstream.status).json(data);
   } catch (err) {
     console.error("Proxy error:", err);
