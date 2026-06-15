@@ -2392,15 +2392,20 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         className="min-h-screen flex items-center justify-center p-4"
         style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT }}
       >
-
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <div
           className="w-full max-w-sm rounded-2xl p-7"
           style={{ background: C.panel, border: `1px solid ${C.line}`, boxShadow: "0 24px 64px -24px #000" }}
         >
           <div className="flex flex-col items-center text-center mb-6">
-            <img src={ARTIUS_LOGO} alt="ARTIUS" className="h-8 w-auto mb-16" style={{ opacity: 0.95 }} />
+            <img src={ARTIUS_LOGO} alt="ARTIUS" className="h-12 w-auto mb-5" style={{ opacity: 0.95 }} />
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+              style={{ background: `linear-gradient(145deg, ${C.accent}, ${C.accentDeep})`, boxShadow: `0 8px 22px -10px ${C.accent}` }}
+            >
+              <Lock className="w-5 h-5" style={{ color: C.onAccent }} aria-hidden="true" />
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
+            <h1 className="text-xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
             <p className="text-xs mt-1.5" style={{ color: C.textDim }}>Công cụ nội bộ ARTIUS — đăng nhập bằng tài khoản</p>
           </div>
 
