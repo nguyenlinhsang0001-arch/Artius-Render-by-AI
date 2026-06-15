@@ -2392,7 +2392,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         className="min-h-screen flex items-center justify-center p-4"
         style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT }}
       >
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
         <div
           className="w-full max-w-sm rounded-2xl p-7"
           style={{ background: C.panel, border: `1px solid ${C.line}`, boxShadow: "0 24px 64px -24px #000" }}
