@@ -840,7 +840,7 @@ export default function InteriorPromptAgent() {
   // Reset bộ đếm (admin). user=null -> reset tất cả; user="x" -> chỉ user đó.
   const [resetBusy, setResetBusy] = useState(false);
   async function resetCounters(user) {
-    const label = user ? `tài khoản @${user}` : "TẤT CẢ tài khoản";
+    const label = user ? `tài khoản ${user}` : "TẤT CẢ tài khoản";
     if (!window.confirm(`Reset bộ đếm prompt và ảnh của ${label}? Không thể hoàn tác.`)) return;
     setResetBusy(true); setStatsErr(null);
     try {
