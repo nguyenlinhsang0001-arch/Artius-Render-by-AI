@@ -66,17 +66,31 @@ export default async function handler(req, res) {
   try {
     if (auth.adm) {
       const users = parseUsers().map((x) => String(x.u));
-      const cmds = [];
+      const cmds = [
+        ["GET", "usage:__all__:prompts"],
+        ["GET", "usage:__all__:images"],
+      ];
       for (const u of users) {
         cmds.push(["GET", `usage:${u}:prompts`]);
         cmds.push(["GET", `usage:${u}:images`]);
       }
       const r = await redisPipe(cmds);
+      const grandP = num(r[0]), grandI = num(r[1]);
+      let sumP = 0, sumI = 0;
       users.forEach((u, i) => {
-        const p = num(r[i * 2]), im = num(r[i * 2 + 1]);
-        totalPrompts += p; totalImages += im;
+        const p = num(r[2 + i * 2]), im = num(r[2 + i * 2 + 1]);
+        sumP += p; sumI += im;
         if (u === auth.sub) { prompts = p; images = im; }
       });
+      // Tổng = max(bộ đếm tổng cộng dồn, tổng hiện tại của các user).
+      // max() để: (1) seed lần đầu từ dữ liệu cũ; (2) reset CÁ NHÂN về sau
+      // không kéo tổng xuống (vì grand không bị xoá khi reset 1 user).
+      totalPrompts = Math.max(grandP, sumP);
+      totalImages = Math.max(grandI, sumI);
+      const fix = [];
+      if (totalPrompts !== grandP) fix.push(["SET", "usage:__all__:prompts", String(totalPrompts)]);
+      if (totalImages !== grandI) fix.push(["SET", "usage:__all__:images", String(totalImages)]);
+      if (fix.length) { try { await redisPipe(fix); } catch { /* ignore */ } }
     } else {
       const r = await redisPipe([
         ["GET", `usage:${auth.sub}:prompts`],

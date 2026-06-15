@@ -39,14 +39,14 @@ async function verifyAuth(req) {
     return j;
   } catch { return null; }
 }
-// INCR 1 key trên Upstash (im lặng nếu chưa cấu hình / lỗi).
-async function redisIncr(key) {
+// INCR nhiều key cùng lúc trên Upstash (im lặng nếu chưa cấu hình / lỗi).
+async function redisIncrMany(keys) {
   const url = process.env.UPSTASH_REDIS_REST_URL, token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return;
-  await fetch(url.replace(/\/+$/, ""), {
+  if (!url || !token || !keys.length) return;
+  await fetch(url.replace(/\/+$/, "") + "/pipeline", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(["INCR", key]),
+    body: JSON.stringify(keys.map((k) => ["INCR", k])),
   });
 }
 
@@ -83,9 +83,9 @@ export default async function handler(req, res) {
 
     const data = await upstream.json();
 
-    // Chỉ đếm khi Anthropic trả thành công. Không để lỗi Redis làm hỏng response.
+    // Chỉ đếm khi Anthropic trả thành công. +1 cho user VÀ +1 cho tổng (__all__).
     if (upstream.ok) {
-      try { await redisIncr(`usage:${auth.sub}:prompts`); } catch { /* ignore */ }
+      try { await redisIncrMany([`usage:${auth.sub}:prompts`, "usage:__all__:prompts"]); } catch { /* ignore */ }
     }
 
     return res.status(upstream.status).json(data);

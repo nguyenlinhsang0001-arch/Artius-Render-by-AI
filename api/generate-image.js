@@ -51,13 +51,13 @@ async function verifyAuth(req) {
     return j;
   } catch { return null; }
 }
-async function redisIncr(key) {
+async function redisIncrMany(keys) {
   const url = process.env.UPSTASH_REDIS_REST_URL, token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return;
-  await fetch(url.replace(/\/+$/, ""), {
+  if (!url || !token || !keys.length) return;
+  await fetch(url.replace(/\/+$/, "") + "/pipeline", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(["INCR", key]),
+    body: JSON.stringify(keys.map((k) => ["INCR", k])),
   });
 }
 
@@ -159,8 +159,8 @@ export default async function handler(req, res) {
       return;
     }
 
-    // Tạo ảnh thành công -> đếm. Không để lỗi Redis làm hỏng response.
-    try { await redisIncr(`usage:${auth.sub}:images`); } catch { /* ignore */ }
+    // Tạo ảnh thành công -> +1 cho user VÀ +1 cho tổng (__all__).
+    try { await redisIncrMany([`usage:${auth.sub}:images`, "usage:__all__:images"]); } catch { /* ignore */ }
 
     res.status(200).json({ b64 });
   } catch (err) {

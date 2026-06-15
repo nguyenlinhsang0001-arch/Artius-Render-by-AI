@@ -77,6 +77,12 @@ export default async function handler(req, res) {
     cmds.push(["DEL", `usage:${u}:prompts`]);
     cmds.push(["DEL", `usage:${u}:images`]);
   }
+  // Reset TẤT CẢ (không chỉ định user) -> xoá luôn bộ đếm TỔNG (__all__).
+  // Reset CÁ NHÂN (có user) -> KHÔNG đụng tổng, để tổng admin không bị mất.
+  if (!target) {
+    cmds.push(["DEL", "usage:__all__:prompts"]);
+    cmds.push(["DEL", "usage:__all__:images"]);
+  }
   try {
     if (cmds.length) await redisPipe(cmds);
   } catch (e) {
