@@ -29,8 +29,13 @@
 //   - Bật Fluid Compute để maxDuration có hiệu lực.
 //   - Node 18+ runtime: có sẵn global fetch / FormData / Blob / AbortController.
 // =============================================================
+import { requireAuth } from "./_auth.js";
 
 export const config = {
+
+  export default async function handler(req, res) {
+  if (!requireAuth(req, res)) return;   // ⬅️ THÊM DÒNG NÀY
+  
   // Hobby: tối đa 60. Pro: có thể nâng 300. Cần Fluid Compute mới hiệu lực.
   maxDuration: 240,
 };
