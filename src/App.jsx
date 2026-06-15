@@ -606,6 +606,7 @@ const IMAGE_API_URL = "/api/generate-image";
 //    chỉ chặn UI. (Chi tiết: api/login.js, api/_auth.js.)
 // =============================================================
 const LOGIN_API_URL = "/api/login";
+const STATS_API_URL = "/api/stats";
 const AUTH_TOKEN_KEY = "artius_ipa_token"; // key localStorage
 
 // Giải base64url -> chuỗi. atob() chỉ hiểu base64 chuẩn nên phải đổi -_ về +/
@@ -627,6 +628,12 @@ function isTokenExpired(token) {
   } catch {
     return true; // token méo mó -> coi như hết hạn
   }
+}
+
+// Giải payload token -> { sub, adm, exp } để biết user hiện tại + có phải admin.
+function decodeToken(token) {
+  try { return JSON.parse(b64urlDecode(String(token).split(".")[0])); }
+  catch { return null; }
 }
 
 // =============================================================
@@ -731,18 +738,20 @@ function StepLabel({ n, children, tight }) {
 }
 
 export default function InteriorPromptAgent() {
-  // ===== AUTH (mật khẩu chung cho team) =====
+  // ===== AUTH (đăng nhập theo tài khoản) =====
   const [authed, setAuthed] = useState(false);
   const [authReady, setAuthReady] = useState(false); // đã đọc xong token từ localStorage (tránh nháy màn login)
+  const [userInput, setUserInput] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authErr, setAuthErr] = useState(null);
+  const [me, setMe] = useState(null); // { sub, adm } giải mã từ token
 
   // Khi mở app: lấy token sẵn có, còn hạn thì vào thẳng; hết hạn/ méo -> bỏ.
   useEffect(() => {
     try {
       const t = localStorage.getItem(AUTH_TOKEN_KEY);
-      if (t && !isTokenExpired(t)) setAuthed(true);
+      if (t && !isTokenExpired(t)) { setAuthed(true); setMe(decodeToken(t)); }
       else if (t) localStorage.removeItem(AUTH_TOKEN_KEY);
     } catch { /* localStorage bị chặn (chế độ riêng tư...) */ }
     setAuthReady(true);
@@ -755,31 +764,53 @@ export default function InteriorPromptAgent() {
   // Đăng xuất: xóa token, quay lại màn login. Gọi cả khi server trả 401.
   function logout() {
     try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch { /* noop */ }
-    setAuthed(false);
-    setPwInput("");
+    setAuthed(false); setMe(null); setPwInput("");
   }
-  // Đăng nhập: POST mật khẩu -> nhận token -> lưu localStorage.
+  // Đăng nhập: POST { username, password } -> nhận token -> lưu localStorage.
   async function doLogin() {
-    const pw = pwInput.trim();
-    if (!pw) { setAuthErr("Nhập mật khẩu."); return; }
+    const username = userInput.trim();
+    const pw = pwInput;
+    if (!username || !pw) { setAuthErr("Nhập tài khoản và mật khẩu."); return; }
     setAuthBusy(true); setAuthErr(null);
     try {
       const r = await fetch(LOGIN_API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: pw }),
+        body: JSON.stringify({ username, password: pw }),
       });
-      if (r.status === 401) { setAuthErr("Sai mật khẩu."); return; }
+      if (r.status === 401) { setAuthErr("Sai tài khoản hoặc mật khẩu."); return; }
       if (!r.ok) { setAuthErr(`Lỗi đăng nhập (HTTP ${r.status}).`); return; }
       const j = await r.json().catch(() => null);
       if (!j?.token) { setAuthErr("Server không trả token. Kiểm tra api/login.js."); return; }
       try { localStorage.setItem(AUTH_TOKEN_KEY, j.token); } catch { /* noop */ }
-      setPwInput("");
+      setPwInput(""); setUserInput("");
+      setMe(decodeToken(j.token));
       setAuthed(true);
     } catch {
       setAuthErr("Không gọi được /api/login. Kiểm tra mạng hoặc deploy.");
     } finally {
       setAuthBusy(false);
+    }
+  }
+
+  // ===== THỐNG KÊ (chỉ admin) =====
+  const [showStats, setShowStats] = useState(false);
+  const [statsRows, setStatsRows] = useState(null);
+  const [statsBusy, setStatsBusy] = useState(false);
+  const [statsErr, setStatsErr] = useState(null);
+  async function openStats() {
+    setShowStats(true); setStatsBusy(true); setStatsErr(null); setStatsRows(null);
+    try {
+      const r = await fetch(STATS_API_URL, { headers: { "Authorization": `Bearer ${authToken()}` } });
+      if (r.status === 401) { logout(); return; }
+      if (r.status === 403) { setStatsErr("Tài khoản này không có quyền xem thống kê."); return; }
+      if (!r.ok) { setStatsErr(`Lỗi tải thống kê (HTTP ${r.status}).`); return; }
+      const j = await r.json().catch(() => null);
+      setStatsRows(Array.isArray(j?.users) ? j.users : []);
+    } catch {
+      setStatsErr("Không gọi được /api/stats.");
+    } finally {
+      setStatsBusy(false);
     }
   }
 
@@ -2168,15 +2199,123 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
   // Nút đăng xuất nhỏ, đặt ở header.
   const logoutEl = (
-    <button
-      onClick={logout}
-      title="Đăng xuất"
-      className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5 transition"
-      style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.textDim }}
-    >
-      <X className="w-3.5 h-3.5" aria-hidden="true" /> Đăng xuất
-    </button>
+    <div className="flex items-center gap-2">
+      {me?.sub && (
+        <span
+          className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5"
+          style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.textDim }}
+          title={me.adm ? "Tài khoản admin" : "Tài khoản"}
+        >
+          <span style={{ color: C.accent, fontWeight: 700 }}>@{me.sub}</span>
+          {me.adm ? <span style={{ color: C.textDim }}>· admin</span> : null}
+        </span>
+      )}
+      {me?.adm && (
+        <button
+          onClick={openStats}
+          title="Xem thống kê sử dụng"
+          className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5 transition"
+          style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft }}
+        >
+          <History className="w-3.5 h-3.5" aria-hidden="true" /> Thống kê
+        </button>
+      )}
+      <button
+        onClick={logout}
+        title="Đăng xuất"
+        className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5 transition"
+        style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.textDim }}
+      >
+        <X className="w-3.5 h-3.5" aria-hidden="true" /> Đăng xuất
+      </button>
+    </div>
   );
+
+  // ===== MODAL THỐNG KÊ (admin) =====
+  const statsModalEl = showStats ? (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)" }}
+      onClick={() => setShowStats(false)}
+    >
+      <div
+        className="w-full max-w-3xl rounded-2xl p-5 ipa-scroll"
+        style={{ background: C.panel, border: `1px solid ${C.line}`, maxHeight: "85vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-extrabold flex items-center gap-2" style={{ color: C.accent }}>
+            <History className="w-4 h-4" aria-hidden="true" /> Thống kê sử dụng
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openStats}
+              disabled={statsBusy}
+              title="Tải lại"
+              className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5"
+              style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.textDim }}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${statsBusy ? "animate-spin" : ""}`} aria-hidden="true" /> Tải lại
+            </button>
+            <button
+              onClick={() => setShowStats(false)}
+              className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5"
+              style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.textDim }}
+            >
+              <X className="w-3.5 h-3.5" aria-hidden="true" /> Đóng
+            </button>
+          </div>
+        </div>
+
+        {statsBusy && !statsRows && (
+          <div className="text-sm flex items-center gap-2 py-6 justify-center" style={{ color: C.textDim }}>
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Đang tải…
+          </div>
+        )}
+        {statsErr && (
+          <div className="flex items-center gap-1.5 text-xs py-3" style={{ color: C.neg }}>
+            <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" /> {statsErr}
+          </div>
+        )}
+        {statsRows && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ color: C.textDim, textAlign: "left" }}>
+                  <th className="py-2 pr-3 font-semibold">Tài khoản</th>
+                  <th className="py-2 px-3 font-semibold" style={{ textAlign: "right" }}>Prompt</th>
+                  <th className="py-2 px-3 font-semibold" style={{ textAlign: "right" }}>Ảnh</th>
+                  <th className="py-2 px-3 font-semibold" style={{ textAlign: "right" }}>Lần ĐN</th>
+                  <th className="py-2 px-3 font-semibold">Đăng nhập gần nhất</th>
+                  <th className="py-2 pl-3 font-semibold">IP gần nhất</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statsRows.length === 0 && (
+                  <tr><td colSpan={6} className="py-4 text-center" style={{ color: C.textDim }}>Chưa có dữ liệu.</td></tr>
+                )}
+                {statsRows.map((u) => (
+                  <tr key={u.user} style={{ borderTop: `1px solid ${C.line}` }}>
+                    <td className="py-2 pr-3" style={{ color: C.accent, fontWeight: 700 }}>@{u.user}</td>
+                    <td className="py-2 px-3" style={{ textAlign: "right", color: C.text }}>{u.prompts}</td>
+                    <td className="py-2 px-3" style={{ textAlign: "right", color: C.text }}>{u.images}</td>
+                    <td className="py-2 px-3" style={{ textAlign: "right", color: C.textDim }}>{u.logins}</td>
+                    <td className="py-2 px-3" style={{ color: C.textDim }}>
+                      {u.lastLogin ? new Date(u.lastLogin).toLocaleString("vi-VN") : "—"}
+                    </td>
+                    <td className="py-2 pl-3" style={{ color: C.textDim, fontFamily: MONO, fontSize: 12 }}>{u.lastIp || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[11px] mt-3" style={{ color: C.textDim }}>
+              "Prompt" = số lần gọi tạo prompt thành công · "Ảnh" = số ảnh tạo thành công. Cộng dồn theo thời gian.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
 
   // ===== CỔNG ĐĂNG NHẬP =====
   // authReady=false: chưa đọc xong localStorage -> render nền trống để khỏi nháy.
@@ -2204,8 +2343,21 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               <Lock className="w-5 h-5" style={{ color: C.onAccent }} aria-hidden="true" />
             </div>
             <h1 className="text-xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
-            <p className="text-xs mt-1.5" style={{ color: C.textDim }}>Công cụ nội bộ ARTIUS — cần mật khẩu để truy cập</p>
+            <p className="text-xs mt-1.5" style={{ color: C.textDim }}>Công cụ nội bộ ARTIUS — đăng nhập bằng tài khoản</p>
           </div>
+
+          <label className="block text-[11px] uppercase tracking-[0.16em] mb-1.5" style={{ color: C.accentSoft }}>Tài khoản</label>
+          <input
+            type="text"
+            value={userInput}
+            onChange={(e) => { setUserInput(e.target.value); if (authErr) setAuthErr(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !authBusy) doLogin(); }}
+            autoFocus
+            autoComplete="username"
+            placeholder="Tên đăng nhập"
+            className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none mb-3"
+            style={{ background: C.inputBg, border: `1px solid ${authErr ? C.neg : C.line}`, color: C.text }}
+          />
 
           <label className="block text-[11px] uppercase tracking-[0.16em] mb-1.5" style={{ color: C.accentSoft }}>Mật khẩu</label>
           <input
@@ -2213,8 +2365,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             value={pwInput}
             onChange={(e) => { setPwInput(e.target.value); if (authErr) setAuthErr(null); }}
             onKeyDown={(e) => { if (e.key === "Enter" && !authBusy) doLogin(); }}
-            autoFocus
-            placeholder="Nhập mật khẩu chung của team"
+            autoComplete="current-password"
+            placeholder="Mật khẩu"
             className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
             style={{ background: C.inputBg, border: `1px solid ${authErr ? C.neg : C.line}`, color: C.text }}
           />
@@ -2238,6 +2390,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
   return (
     <div className="min-h-screen p-4 md:p-8" style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT, overflowX: "clip" }}>
+      {statsModalEl}
       {/* Nạp font sans + mono (Plus Jakarta Sans hỗ trợ tiếng Việt) */}
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
