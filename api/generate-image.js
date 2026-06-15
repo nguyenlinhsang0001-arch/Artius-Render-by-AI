@@ -29,10 +29,8 @@
 //   - Bật Fluid Compute để maxDuration có hiệu lực.
 //   - Node 18+ runtime: có sẵn global fetch / FormData / Blob / AbortController.
 // =============================================================
-import { requireAuth } from "../lib/auth.js";
-
 export const config = {
-
+import { requireAuth } from "../lib/auth.js";
   export default async function handler(req, res) {
   if (!requireAuth(req, res)) return;   // ⬅️ THÊM DÒNG NÀY
   
