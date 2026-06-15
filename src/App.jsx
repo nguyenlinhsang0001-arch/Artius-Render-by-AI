@@ -2210,7 +2210,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           {me.adm ? <span style={{ color: C.textDim }}>· admin</span> : null}
         </span>
       )}
-      {me?.adm && (
+      {me?.adm ? (
         <button
           onClick={openStats}
           title="Xem thống kê sử dụng"
@@ -2219,7 +2219,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         >
           <History className="w-3.5 h-3.5" aria-hidden="true" /> Thống kê
         </button>
-      )}
+      ) : null}
       <button
         onClick={logout}
         title="Đăng xuất"
