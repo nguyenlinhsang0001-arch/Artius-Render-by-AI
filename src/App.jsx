@@ -2405,7 +2405,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             >
               <Lock className="w-5 h-5" style={{ color: C.onAccent }} aria-hidden="true" />
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
             <p className="text-xs mt-1.5" style={{ color: C.textDim }}>Công cụ nội bộ ARTIUS — đăng nhập bằng tài khoản</p>
           </div>
 
