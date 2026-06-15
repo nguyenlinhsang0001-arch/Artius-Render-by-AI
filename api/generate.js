@@ -13,9 +13,14 @@
 //   - process.env.ANTHROPIC_API_KEY lấy từ Vercel > Settings > Environment
 //     Variables (xem DEPLOY.md).
 // =============================================================
+import { requireAuth } from "./_auth.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
+    
+export default async function handler(req, res) {
+  if (!requireAuth(req, res)) return;   // ⬅️ THÊM DÒNG NÀY
+    
     return res.status(405).json({ error: "Chỉ chấp nhận POST" });
   }
 
