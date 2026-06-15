@@ -597,6 +597,39 @@ const API_URL = "/api/generate";
 const IMAGE_API_URL = "/api/generate-image";
 
 // =============================================================
+// AUTH — đăng nhập bằng 1 mật khẩu chung cho cả team.
+//  · /api/login : nhận { password }, so với APP_PASSWORD (env trên Vercel),
+//    nếu đúng cấp 1 signed token (HMAC-SHA256, hết hạn ~7 ngày).
+//  · Token lưu ở localStorage, đính kèm "Authorization: Bearer <token>" vào
+//    MỌI lời gọi /api/generate và /api/generate-image.
+//  · 2 endpoint đó verify chữ ký phía SERVER -> chặn lạm dụng thật sự, không
+//    chỉ chặn UI. (Chi tiết: api/login.js, api/_auth.js.)
+// =============================================================
+const LOGIN_API_URL = "/api/login";
+const AUTH_TOKEN_KEY = "artius_ipa_token"; // key localStorage
+
+// Giải base64url -> chuỗi. atob() chỉ hiểu base64 chuẩn nên phải đổi -_ về +/
+// và bù "=" cho đủ block 4 ký tự.
+function b64urlDecode(s) {
+  s = String(s).replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  return atob(s);
+}
+
+// Đọc phần payload (đoạn TRƯỚC dấu ".") để lấy exp và tự logout sớm khi token
+// hết hạn. KHÔNG xác thực chữ ký ở client — đó là việc của server ở mỗi call.
+function isTokenExpired(token) {
+  try {
+    const payloadB64 = String(token).split(".")[0];
+    const json = JSON.parse(b64urlDecode(payloadB64));
+    if (!json || typeof json.exp !== "number") return true;
+    return Date.now() >= json.exp * 1000; // exp là epoch giây
+  } catch {
+    return true; // token méo mó -> coi như hết hạn
+  }
+}
+
+// =============================================================
 // UploadBox — ĐỊNH NGHĨA NGOÀI component chính để không bị recreate mỗi render.
 // =============================================================
 function UploadBox({ img, onClick, onDrop, inputRef, onChange, onClear, icon, title, subtitle, active }) {
@@ -698,6 +731,58 @@ function StepLabel({ n, children, tight }) {
 }
 
 export default function InteriorPromptAgent() {
+  // ===== AUTH (mật khẩu chung cho team) =====
+  const [authed, setAuthed] = useState(false);
+  const [authReady, setAuthReady] = useState(false); // đã đọc xong token từ localStorage (tránh nháy màn login)
+  const [pwInput, setPwInput] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authErr, setAuthErr] = useState(null);
+
+  // Khi mở app: lấy token sẵn có, còn hạn thì vào thẳng; hết hạn/ méo -> bỏ.
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem(AUTH_TOKEN_KEY);
+      if (t && !isTokenExpired(t)) setAuthed(true);
+      else if (t) localStorage.removeItem(AUTH_TOKEN_KEY);
+    } catch { /* localStorage bị chặn (chế độ riêng tư...) */ }
+    setAuthReady(true);
+  }, []);
+
+  // Lấy token để đính vào header Authorization của các API call.
+  function authToken() {
+    try { return localStorage.getItem(AUTH_TOKEN_KEY) || ""; } catch { return ""; }
+  }
+  // Đăng xuất: xóa token, quay lại màn login. Gọi cả khi server trả 401.
+  function logout() {
+    try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch { /* noop */ }
+    setAuthed(false);
+    setPwInput("");
+  }
+  // Đăng nhập: POST mật khẩu -> nhận token -> lưu localStorage.
+  async function doLogin() {
+    const pw = pwInput.trim();
+    if (!pw) { setAuthErr("Nhập mật khẩu."); return; }
+    setAuthBusy(true); setAuthErr(null);
+    try {
+      const r = await fetch(LOGIN_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (r.status === 401) { setAuthErr("Sai mật khẩu."); return; }
+      if (!r.ok) { setAuthErr(`Lỗi đăng nhập (HTTP ${r.status}).`); return; }
+      const j = await r.json().catch(() => null);
+      if (!j?.token) { setAuthErr("Server không trả token. Kiểm tra api/login.js."); return; }
+      try { localStorage.setItem(AUTH_TOKEN_KEY, j.token); } catch { /* noop */ }
+      setPwInput("");
+      setAuthed(true);
+    } catch {
+      setAuthErr("Không gọi được /api/login. Kiểm tra mạng hoặc deploy.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
   // 2 ảnh đầu vào
   const [styleImg, setStyleImg] = useState(null);
   const [modelImg, setModelImg] = useState(null);
@@ -1258,6 +1343,11 @@ export default function InteriorPromptAgent() {
     try { raw = await response.text(); } catch { /* body rỗng */ }
 
     if (!response.ok) {
+      // 401 = token thiếu/sai/hết hạn (do api/_auth.js từ chối). Đẩy về login.
+      if (status === 401) {
+        logout();
+        return { data: null, errMsg: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." };
+      }
       // Thử bóc JSON error chuẩn của Anthropic trước.
       try {
         const j = JSON.parse(raw);
@@ -1419,7 +1509,7 @@ Rules:
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 4096,
@@ -1534,7 +1624,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 1500,
@@ -1609,7 +1699,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     try {
       const response = await fetch(IMAGE_API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
         // size: ép đúng tỷ lệ người dùng đã chọn (aspectRatio). Fallback "auto"
         // nếu tỷ lệ lạ không có trong map.
         // mode: "generate" -> proxy gọi images/generations; "edit" -> images/edits.
@@ -1618,6 +1708,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
       let raw = "";
       try { raw = await response.text(); } catch { /* body rỗng */ }
+      if (response.status === 401) {
+        logout();
+        setGenError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        setGenStatus("error");
+        return;
+      }
       if (!response.ok) {
         setGenError(`Lỗi tạo ảnh (HTTP ${response.status}). ${raw.slice(0, 300)}`);
         setGenStatus("error");
@@ -2070,6 +2166,76 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     </div>
   );
 
+  // Nút đăng xuất nhỏ, đặt ở header.
+  const logoutEl = (
+    <button
+      onClick={logout}
+      title="Đăng xuất"
+      className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5 transition"
+      style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.textDim }}
+    >
+      <X className="w-3.5 h-3.5" aria-hidden="true" /> Đăng xuất
+    </button>
+  );
+
+  // ===== CỔNG ĐĂNG NHẬP =====
+  // authReady=false: chưa đọc xong localStorage -> render nền trống để khỏi nháy.
+  if (!authReady) {
+    return <div style={{ minHeight: "100vh", background: C.bg }} />;
+  }
+  // Chưa đăng nhập -> chỉ render màn login, KHÔNG render app.
+  if (!authed) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT }}
+      >
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <div
+          className="w-full max-w-sm rounded-2xl p-7"
+          style={{ background: C.panel, border: `1px solid ${C.line}`, boxShadow: "0 24px 64px -24px #000" }}
+        >
+          <div className="flex flex-col items-center text-center mb-6">
+            <img src={ARTIUS_LOGO} alt="ARTIUS" className="h-12 w-auto mb-5" style={{ opacity: 0.95 }} />
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+              style={{ background: `linear-gradient(145deg, ${C.accent}, ${C.accentDeep})`, boxShadow: `0 8px 22px -10px ${C.accent}` }}
+            >
+              <Lock className="w-5 h-5" style={{ color: C.onAccent }} aria-hidden="true" />
+            </div>
+            <h1 className="text-xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
+            <p className="text-xs mt-1.5" style={{ color: C.textDim }}>Công cụ nội bộ ARTIUS — cần mật khẩu để truy cập</p>
+          </div>
+
+          <label className="block text-[11px] uppercase tracking-[0.16em] mb-1.5" style={{ color: C.accentSoft }}>Mật khẩu</label>
+          <input
+            type="password"
+            value={pwInput}
+            onChange={(e) => { setPwInput(e.target.value); if (authErr) setAuthErr(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !authBusy) doLogin(); }}
+            autoFocus
+            placeholder="Nhập mật khẩu chung của team"
+            className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
+            style={{ background: C.inputBg, border: `1px solid ${authErr ? C.neg : C.line}`, color: C.text }}
+          />
+          {authErr && (
+            <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: C.neg }}>
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /> {authErr}
+            </div>
+          )}
+          <button
+            onClick={doLogin}
+            disabled={authBusy}
+            className="w-full mt-4 rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition"
+            style={{ background: `linear-gradient(145deg, ${C.accent}, ${C.accentDeep})`, color: C.onAccent, opacity: authBusy ? 0.6 : 1, cursor: authBusy ? "default" : "pointer" }}
+          >
+            {authBusy ? (<><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Đang kiểm tra…</>) : "Đăng nhập"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-4 md:p-8" style={{ background: `radial-gradient(120% 75% at 50% -8%, ${C.bgGrad} 0%, ${C.bg} 55%)`, color: C.text, fontFamily: FONT, overflowX: "clip" }}>
       {/* Nạp font sans + mono (Plus Jakarta Sans hỗ trợ tiếng Việt) */}
@@ -2109,7 +2275,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           {titleEl}
           <div className="flex flex-col items-end gap-5 shrink-0">
             {logoEl}
-            {badgeEl}
+            <div className="flex items-center gap-2">
+              {badgeEl}
+              {logoutEl}
+            </div>
           </div>
         </div>
 
@@ -2117,7 +2286,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <div className="flex md:hidden flex-col items-center gap-5 mb-2 pt-3">
           <div className="mb-7">{logoEl}</div>
           {titleEl}
-          {badgeEl}
+          <div className="flex items-center gap-2">
+            {badgeEl}
+            {logoutEl}
+          </div>
         </div>
 
 
