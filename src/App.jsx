@@ -607,6 +607,8 @@ const IMAGE_API_URL = "/api/generate-image";
 // =============================================================
 const LOGIN_API_URL = "/api/login";
 const STATS_API_URL = "/api/stats";
+const USAGE_API_URL = "/api/usage";
+const RESET_API_URL = "/api/reset";
 const AUTH_TOKEN_KEY = "artius_ipa_token"; // key localStorage
 
 // Giải base64url -> chuỗi. atob() chỉ hiểu base64 chuẩn nên phải đổi -_ về +/
@@ -765,6 +767,7 @@ export default function InteriorPromptAgent() {
   function logout() {
     try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch { /* noop */ }
     setAuthed(false); setMe(null); setPwInput("");
+    setCounts({ prompts: 0, images: 0 });
   }
   // Đăng nhập: POST { username, password } -> nhận token -> lưu localStorage.
   async function doLogin() {
@@ -800,6 +803,7 @@ export default function InteriorPromptAgent() {
   const [statsErr, setStatsErr] = useState(null);
   async function openStats() {
     setShowStats(true); setStatsBusy(true); setStatsErr(null); setStatsRows(null);
+    fetchUsage(); // đồng bộ badge header (tổng) khi mở bảng
     try {
       const r = await fetch(STATS_API_URL, { headers: { "Authorization": `Bearer ${authToken()}` } });
       if (r.status === 401) { logout(); return; }
@@ -811,6 +815,49 @@ export default function InteriorPromptAgent() {
       setStatsErr("Không gọi được /api/stats.");
     } finally {
       setStatsBusy(false);
+    }
+  }
+
+  // Lấy số liệu badge theo tài khoản. User thường -> của mình; admin -> TỔNG.
+  async function fetchUsage() {
+    try {
+      const r = await fetch(USAGE_API_URL, { headers: { "Authorization": `Bearer ${authToken()}` } });
+      if (r.status === 401) { logout(); return; }
+      if (!r.ok) return;
+      const j = await r.json().catch(() => null);
+      if (!j) return;
+      if (j.adm) setCounts({ prompts: j.totalPrompts || 0, images: j.totalImages || 0 });
+      else setCounts({ prompts: j.prompts || 0, images: j.images || 0 });
+    } catch { /* để badge giữ giá trị optimistic */ }
+  }
+
+  // Đồng bộ badge mỗi khi đăng nhập (authed bật lên).
+  useEffect(() => {
+    if (authed) fetchUsage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
+
+  // Reset bộ đếm (admin). user=null -> reset tất cả; user="x" -> chỉ user đó.
+  const [resetBusy, setResetBusy] = useState(false);
+  async function resetCounters(user) {
+    const label = user ? `tài khoản @${user}` : "TẤT CẢ tài khoản";
+    if (!window.confirm(`Reset bộ đếm prompt và ảnh của ${label}? Không thể hoàn tác.`)) return;
+    setResetBusy(true); setStatsErr(null);
+    try {
+      const r = await fetch(RESET_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
+        body: JSON.stringify(user ? { user } : {}),
+      });
+      if (r.status === 401) { logout(); return; }
+      if (r.status === 403) { setStatsErr("Chỉ admin được reset."); return; }
+      if (!r.ok) { setStatsErr(`Reset lỗi (HTTP ${r.status}).`); return; }
+      await openStats();   // tải lại bảng thống kê
+      await fetchUsage();  // đồng bộ lại badge header
+    } catch {
+      setStatsErr("Không gọi được /api/reset.");
+    } finally {
+      setResetBusy(false);
     }
   }
 
@@ -891,13 +938,9 @@ export default function InteriorPromptAgent() {
   const [rebuilding, setRebuilding] = useState(false);
   // Bộ đếm số lần đã tạo prompt / tạo ảnh — lưu localStorage để tích lũy qua
   // nhiều phiên (B2). Đọc lazy lúc mount; ghi lại mỗi lần tăng (xem bumpCount).
-  const [counts, setCounts] = useState(() => {
-    try {
-      const raw = localStorage.getItem("ipa_counts");
-      if (raw) { const p = JSON.parse(raw); return { prompts: p.prompts || 0, images: p.images || 0 }; }
-    } catch { /* localStorage bị chặn (private mode) -> bỏ qua */ }
-    return { prompts: 0, images: 0 };
-  });
+  // Bộ đếm prompt/ảnh — lấy từ server theo TÀI KHOẢN (xem fetchUsage). Với
+  // admin badge hiển thị TỔNG tất cả users. Khởi tạo 0, fetch sau khi đăng nhập.
+  const [counts, setCounts] = useState({ prompts: 0, images: 0 });
 
   // Ảnh render từ gpt-image-2 (qua /api/generate-image). genImg = data URI
   // để review; genStatus = idle|generating|done|error. KHÔNG tốn token
@@ -1061,13 +1104,10 @@ export default function InteriorPromptAgent() {
   function changeStyleB(id) { setStyleB(id); }
   function changeBlendRatio(v) { setBlendRatio(v); }
 
-  // Tăng bộ đếm prompt/ảnh và LƯU localStorage ngay (B2: tích lũy qua phiên).
+  // Tăng badge tại chỗ (optimistic) sau khi server đã +1. Server mới là nguồn
+  // chuẩn; lần đăng nhập sau / mở Thống kê sẽ đồng bộ lại bằng fetchUsage.
   function bumpCount(key) {
-    setCounts((c) => {
-      const next = { ...c, [key]: (c[key] || 0) + 1 };
-      try { localStorage.setItem("ipa_counts", JSON.stringify(next)); } catch { /* bỏ qua nếu bị chặn */ }
-      return next;
-    });
+    setCounts((c) => ({ ...c, [key]: (c[key] || 0) + 1 }));
   }
 
   // Diễn giải style intensity thành mô tả EN nhồi vào prompt.
@@ -2181,7 +2221,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     <div
       className="rounded-xl px-3 py-1.5 text-xs leading-tight"
       style={{ background: `${C.panel}ee`, border: `1px solid ${C.accent}55`, color: C.text, fontFamily: MONO }}
-      title={`Đã tạo ${counts.prompts.toLocaleString()} prompt và ${counts.images.toLocaleString()} ảnh (tích lũy, lưu trên trình duyệt này).`}
+      title={me?.adm
+        ? `TỔNG tất cả tài khoản: ${counts.prompts.toLocaleString()} prompt · ${counts.images.toLocaleString()} ảnh.`
+        : `Tài khoản @${me?.sub || ""}: ${counts.prompts.toLocaleString()} prompt · ${counts.images.toLocaleString()} ảnh (tích lũy).`}
     >
       <div className="flex items-center gap-3">
         <div>
@@ -2249,6 +2291,15 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </h2>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => resetCounters(null)}
+              disabled={resetBusy || statsBusy}
+              title="Reset bộ đếm prompt + ảnh cho tất cả tài khoản"
+              className="rounded-lg px-2.5 py-1.5 text-[11px] flex items-center gap-1.5"
+              style={{ background: `${C.neg}22`, border: `1px solid ${C.neg}66`, color: C.neg, opacity: resetBusy ? 0.6 : 1 }}
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${resetBusy ? "animate-spin" : ""}`} aria-hidden="true" /> Reset tất cả
+            </button>
+            <button
               onClick={openStats}
               disabled={statsBusy}
               title="Tải lại"
@@ -2288,11 +2339,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   <th className="py-2 px-3 font-semibold" style={{ textAlign: "right" }}>Lần ĐN</th>
                   <th className="py-2 px-3 font-semibold">Đăng nhập gần nhất</th>
                   <th className="py-2 pl-3 font-semibold">IP gần nhất</th>
+                  <th className="py-2 pl-3 font-semibold" style={{ textAlign: "right" }}></th>
                 </tr>
               </thead>
               <tbody>
                 {statsRows.length === 0 && (
-                  <tr><td colSpan={6} className="py-4 text-center" style={{ color: C.textDim }}>Chưa có dữ liệu.</td></tr>
+                  <tr><td colSpan={7} className="py-4 text-center" style={{ color: C.textDim }}>Chưa có dữ liệu.</td></tr>
                 )}
                 {statsRows.map((u) => (
                   <tr key={u.user} style={{ borderTop: `1px solid ${C.line}` }}>
@@ -2304,6 +2356,17 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                       {u.lastLogin ? new Date(u.lastLogin).toLocaleString("vi-VN") : "—"}
                     </td>
                     <td className="py-2 pl-3" style={{ color: C.textDim, fontFamily: MONO, fontSize: 12 }}>{u.lastIp || "—"}</td>
+                    <td className="py-2 pl-3" style={{ textAlign: "right" }}>
+                      <button
+                        onClick={() => resetCounters(u.user)}
+                        disabled={resetBusy}
+                        title={`Reset bộ đếm của @${u.user}`}
+                        className="rounded-lg px-2 py-1 inline-flex items-center"
+                        style={{ background: `${C.neg}1a`, border: `1px solid ${C.neg}55`, color: C.neg }}
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
