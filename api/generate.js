@@ -50,6 +50,36 @@ async function redisIncrMany(keys) {
   });
 }
 
+// ---- IP limit: tối đa 2 IP / account, TTL 12h. Atomic qua Redis EVAL (ZSET).
+//      Key ipset:<user>: member=IP, score=last_seen(epoch s). Fail-open nếu Redis
+//      chưa cấu hình / lỗi (nhất quán với cách app im lặng khi Redis lỗi).
+const IP_TTL = 12 * 3600, IP_LIMIT = 2;
+const IP_LUA =
+  "local k=KEYS[1] local now=tonumber(ARGV[1]) local ttl=tonumber(ARGV[2]) " +
+  "local lim=tonumber(ARGV[3]) local ip=ARGV[4] " +
+  "redis.call('ZREMRANGEBYSCORE',k,0,now-ttl) " +
+  "if redis.call('ZSCORE',k,ip) then redis.call('ZADD',k,now,ip) redis.call('EXPIRE',k,ttl) return 1 end " +
+  "if redis.call('ZCARD',k)>=lim then return 0 end " +
+  "redis.call('ZADD',k,now,ip) redis.call('EXPIRE',k,ttl) return 1";
+function clientIp(req) {
+  return String(req.headers["x-forwarded-for"] || "").split(",")[0].trim()
+    || String(req.headers["x-real-ip"] || "") || "unknown";
+}
+async function checkIpLimit(user, ip) {
+  const url = process.env.UPSTASH_REDIS_REST_URL, token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return true;                 // chưa cấu hình -> không chặn
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const r = await fetch(url.replace(/\/+$/, "") + "/", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(["EVAL", IP_LUA, "1", `ipset:${user}`, String(now), String(IP_TTL), String(IP_LIMIT), ip]),
+    });
+    const j = await r.json().catch(() => null);
+    return !(j && j.result === 0);                 // result===0 -> block; còn lại fail-open
+  } catch { return true; }
+}
+
 export default async function handler(req, res) {
   const auth = await verifyAuth(req);
   if (!auth) return res.status(401).json({ error: { message: "Unauthorized" } });
@@ -66,6 +96,10 @@ export default async function handler(req, res) {
         "Environment Variables rồi redeploy.",
     });
   }
+
+  // Chặn nếu account đã dùng ở >2 IP (giới hạn 2 mạng/thiết bị, TTL 12h).
+  if (!(await checkIpLimit(auth.sub, clientIp(req))))
+    return res.status(403).json({ error: "IP_LIMIT_EXCEEDED" });
 
   try {
     const payload =
