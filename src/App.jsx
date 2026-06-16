@@ -2497,12 +2497,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           style={{ background: C.panel, border: `1px solid ${C.line}`, boxShadow: "0 24px 64px -24px #000" }}
         >
           <div className="flex flex-col items-center text-center mb-6">
-            <img src={ARTIUS_LOGO} alt="ARTIUS" className="h-10 w-auto mb-10" style={{ opacity: 0.95 }} />
-            <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
+            <img src={ARTIUS_LOGO} alt="ARTIUS" className="h-8 w-auto mb-10" style={{ opacity: 0.95 }} />
+            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
             <p className="text-xs mt-1.5" style={{ color: C.textDim }}>Công cụ nội bộ ARTIUS — đăng nhập bằng tài khoản</p>
           </div>
 
-          <label className="block text-[11px] uppercase tracking-[0.16em] mb-1.5 mt-5" style={{ color: C.accentSoft }}>Tài khoản</label>
+          <label className="block text-[11px] uppercase tracking-[0.16em] mb-1.5 mt-10" style={{ color: C.accentSoft }}>Tài khoản</label>
           <input
             type="text"
             value={userInput}
