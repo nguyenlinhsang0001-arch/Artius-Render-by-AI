@@ -2442,7 +2442,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         >
           <div className="flex flex-col items-center text-center mb-6">
             <img src={ARTIUS_LOGO} alt="ARTIUS" className="h-10 w-auto mb-10" style={{ opacity: 0.95 }} />
-            <h1 className="text-2.2xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: C.accent }}>Interior Render Agent</h1>
             <p className="text-xs mt-1.5" style={{ color: C.textDim }}>Công cụ nội bộ ARTIUS — đăng nhập bằng tài khoản</p>
           </div>
 
