@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Loader2, Copy, Check, Image as ImageIcon, Sparkles, AlertCircle, Palette, Box, Lock, Pencil, Move3d, Droplet, Layers, Maximize2, Ban, X, RefreshCw, Home, History, ChevronDown, ChevronLeft, ChevronRight, Shuffle, RotateCcw, Download, ZoomIn, Building2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Copy, Check, Image as ImageIcon, Sparkles, AlertCircle, Palette, Box, Lock, Pencil, Move3d, Droplet, Layers, Maximize2, Ban, X, RefreshCw, Home, History, ChevronDown, ChevronLeft, ChevronRight, Shuffle, RotateCcw, Download, ZoomIn, Building2, Eye, EyeOff, Search, LayoutGrid, List } from "lucide-react";
 
 const PLATFORMS = [
   { id: "nanobanana", label: "gpt-image 2", hint: "" },
@@ -601,7 +601,7 @@ const SERIF = "'Cormorant', 'Cormorant Garamond', Georgia, serif";
 // phụ thuộc file ngoài. Thay cho icon Sparkles ở header.
 const ARTIUS_LOGO = "data:image/png;base64,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";
 
-const APP_VERSION = "v35.3 · 19/06/2026";
+const APP_VERSION = "v36.0 · 20/06/2026";
 
 // =============================================================
 // API_URL — ĐIỂM GỌI API DUY NHẤT, đặt một chỗ để dễ đổi.
@@ -1007,6 +1007,10 @@ export default function InteriorPromptAgent() {
   // Preset đang hover (để hiện mô tả chi tiết ở panel bên dưới mà không
   // làm các nút chip dài ra). null = không hover.
   const [presetHover, setPresetHover] = useState(null);
+  // ── Preset UI (v36): tìm kiếm + lọc danh mục + chế độ xem ──
+  const [presetQuery, setPresetQuery] = useState("");      // ô search
+  const [presetCat, setPresetCat] = useState("");          // "" = Tất cả; còn lại = tên group
+  const [presetView, setPresetView] = useState("grid");    // "grid" | "list"
   // Ảnh preset đang phóng to (lightbox). null = đóng. Giữ cả object preset để hiện tên.
   const [zoomStyle, setZoomStyle] = useState(null);
   // ── STYLE BLEND (Hướng A): trộn 2 preset với tỷ lệ ──────────────
@@ -2921,7 +2925,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: `radial-gradient(140% 90% at 50% -10%, ${C.bgGrad} 0%, ${C.bgDeep} 60%)`, color: C.text, fontFamily: FONT, overflowX: "clip" }}>
+    <div className="min-h-screen flex flex-col ipa-shell" style={{ background: `radial-gradient(140% 90% at 50% -10%, ${C.bgGrad} 0%, ${C.bgDeep} 60%)`, color: C.text, fontFamily: FONT, overflowX: "clip" }}>
       {statsModalEl}
       {/* Nạp font sans + mono (Plus Jakarta Sans hỗ trợ tiếng Việt) */}
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -2945,11 +2949,21 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-grid { margin-top: 1rem; }
         .ipa-col-left, .ipa-col-right { min-width: 0; }
         @media (min-width: 768px) {
-          .ipa-grid { display: grid; grid-template-columns: 396px minmax(0, 1fr); gap: 1.25rem; align-items: stretch; margin-top: 0; }
-          .ipa-col-left, .ipa-col-right { display: block !important; }
-          .ipa-col-right {
-            padding-left: 1rem; border-left: 1px solid ${C.line};
+          /* App shell cao cố định: trang KHÔNG cuộn — chỉ các cột cuộn nội bộ (Việc 1+2) */
+          .ipa-shell { height: 100dvh; overflow: hidden; }
+          .ipa-grid {
+            display: grid; grid-template-columns: 396px minmax(0, 1fr); gap: 1.25rem;
+            align-items: stretch; margin-top: 0; flex: 1 1 auto; min-height: 0;
           }
+          .ipa-col-left  { display: flex !important; flex-direction: column; min-height: 0; }
+          .ipa-col-right { display: flex !important; flex-direction: column; min-height: 0;
+            padding-left: 1rem; border-left: 1px solid ${C.line}; }
+          /* thân cuộn cột trái (controls) — vùng cuộn duy nhất của panel Accent */
+          .ipa-pane-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+          /* CTA cố định đáy cột trái (Việc 4) */
+          .ipa-cta { flex: none; border-top: 1px solid ${C.line}; padding-top: 0.75rem; margin-top: 0.5rem; }
+          /* viewport canvas (kết quả) cuộn nội bộ; strip lịch sử là footer cố định (Việc 1) */
+          .ipa-canvas-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
           .ipa-img-sticky { position: static; }
         }
       `}</style>
@@ -2958,10 +2972,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       {topBarEl}
 
       {/* ===== BODY: nav rail | content ===== */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 md:min-h-0">
         {navRailEl}
-        <div className="flex-1 min-w-0">
-      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:px-6 pt-4 md:pt-1 pb-4 md:pb-6">
+        <div className="flex-1 min-w-0 md:flex md:flex-col md:min-h-0">
+      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:px-6 pt-4 md:pt-1 pb-4 md:pb-6 md:flex-1 md:min-h-0 md:flex md:flex-col md:overflow-hidden">
 
 
         {/* =====================================================
@@ -3015,6 +3029,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             </div>
           )}
         </div>
+
+          {/* ===== THÂN CUỘN CỘT TRÁI — desktop: vùng cuộn duy nhất; key đổi theo nav → fade (Việc 5) ===== */}
+          <div key={navSection} className="ipa-pane-scroll ipa-scroll ipa-anim">
 
           {/* TAB 1: NGUỒN & PHONG CÁCH */}
           {showSource && (
@@ -3152,57 +3169,111 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 />
             </div>
 
-            {/* STYLE PRESETS — gom theo nhóm. Khi đã nạp ảnh STYLE thì mờ + khóa. */}
+            {/* ===== STYLE PRESETS (v36) — search + danh mục + grid/list + card 1.5:1 có check. Khóa khi có ảnh STYLE. ===== */}
             <div
               className="mt-4 rounded-2xl p-4 transition-opacity"
               style={{ background: C.panel, border: `1px solid ${C.line}`, opacity: styleImg ? 0.5 : 1 }}
             >
-              <div className="flex items-center gap-2 mb-1">
+              {/* Header: tiêu đề + Trộn + grid/list toggle */}
+              <div className="flex items-center gap-2 mb-2">
                 <Layers className="w-4 h-4" style={{ color: C.accent }} />
                 <p className="text-xs font-bold uppercase tracking-normal sm:tracking-[0.14em] whitespace-nowrap shrink-0" style={{ color: C.accentSoft }}>
                   Style preset nhanh
                 </p>
-                <button
-                  onClick={() => !styleImg && changeBlendMode(!blendMode)}
-                  disabled={!!styleImg}
-                  title="Bật để TRỘN 2 phong cách: click chọn style chính, rồi click thêm 1 style nữa làm phụ"
-                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all ml-auto shrink-0 whitespace-nowrap"
-                  style={{ ...(blendMode ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : "pointer", opacity: styleImg ? 0.5 : 1 }}
-                >
-                  <Shuffle className="w-3 h-3" style={{ color: blendMode ? C.onAccent : C.accent }} />
-                  <span className="whitespace-nowrap" style={{ color: blendMode ? C.onAccent : C.text }}>Trộn {blendMode ? "BẬT" : "tắt"}</span>
-                </button>
+                <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => !styleImg && changeBlendMode(!blendMode)}
+                    disabled={!!styleImg}
+                    title="Bật để TRỘN 2 phong cách: click chọn style chính, rồi click thêm 1 style nữa làm phụ"
+                    className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all whitespace-nowrap"
+                    style={{ ...(blendMode ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : "pointer", opacity: styleImg ? 0.5 : 1 }}
+                  >
+                    <Shuffle className="w-3 h-3" style={{ color: blendMode ? C.onAccent : C.accent }} />
+                    <span style={{ color: blendMode ? C.onAccent : C.text }}>Trộn {blendMode ? "BẬT" : "tắt"}</span>
+                  </button>
+                  <div className="flex items-center rounded-full p-0.5" style={{ background: C.panel2, border: `1px solid ${C.line}` }}>
+                    {[{ id: "grid", Icon: LayoutGrid }, { id: "list", Icon: List }].map(({ id, Icon }) => {
+                      const onv = presetView === id;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => setPresetView(id)}
+                          title={id === "grid" ? "Dạng lưới" : "Dạng danh sách"}
+                          aria-label={id === "grid" ? "Dạng lưới" : "Dạng danh sách"}
+                          className="inline-flex items-center justify-center w-6 h-6 rounded-full transition-colors"
+                          style={{ background: onv ? C.accent : "transparent", color: onv ? C.onAccent : C.textDim, cursor: "pointer" }}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              {(styleImg || blendMode) && (
-                <p className="text-xs mb-3" style={{ color: C.textDim }}>
-                  {styleImg
-                    ? "Đã có ảnh STYLE — ảnh được ưu tiên nên preset tạm khóa. Gỡ ảnh STYLE để chọn preset."
-                    : "Chế độ TRỘN: click chọn phong cách CHÍNH (đậm), rồi click thêm 1 phong cách nữa làm PHỤ (hiện nhạt hơn). Click lại để bỏ."}
-                </p>
-              )}
 
               {styleImg && (
-                <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.text}}>
+                <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.text }}>
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   Đang dùng ảnh STYLE làm nguồn phong cách. Preset bị vô hiệu để tránh xung đột.
                 </div>
               )}
+              {!styleImg && blendMode && (
+                <p className="text-xs mb-2" style={{ color: C.textDim }}>
+                  Chế độ TRỘN: click chọn phong cách CHÍNH (đậm), rồi click thêm 1 phong cách nữa làm PHỤ. Click lại để bỏ.
+                </p>
+              )}
 
-              {/* Panel mô tả động: ưu tiên preset đang hover, nếu không thì đang chọn. */}
+              {/* Search */}
+              <div className="relative mb-2.5">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: C.textFaint }} />
+                <input
+                  type="text"
+                  value={presetQuery}
+                  onChange={(e) => setPresetQuery(e.target.value)}
+                  disabled={!!styleImg}
+                  placeholder="Tìm phong cách…"
+                  className="w-full rounded-lg pl-9 pr-8 py-2 text-sm outline-none"
+                  style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text }}
+                />
+                {presetQuery && (
+                  <button
+                    onClick={() => setPresetQuery("")}
+                    title="Xóa tìm kiếm" aria-label="Xóa tìm kiếm"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-5 h-5 rounded-full"
+                    style={{ color: C.textDim, cursor: "pointer" }}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Tabs danh mục */}
+              <div className="flex gap-1.5 overflow-x-auto ipa-scroll pb-1.5 mb-2">
+                {[{ id: "", label: "Tất cả" }, ...Array.from(new Set(STYLE_PRESETS.map((pp) => pp.group))).map((g) => ({ id: g, label: g }))].map((cat) => {
+                  const onc = presetCat === cat.id;
+                  return (
+                    <button
+                      key={cat.id || "all"}
+                      onClick={() => setPresetCat(cat.id)}
+                      disabled={!!styleImg}
+                      className="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors whitespace-nowrap"
+                      style={{ ...(onc ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : "pointer" }}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Hint bar — mô tả preset đang hover/chọn */}
               {!styleImg && (() => {
                 const shownId = presetHover || stylePreset;
                 const shown = STYLE_PRESETS.find((p) => p.id === shownId);
                 return (
-                  <div
-                    className="mt-3 rounded-lg px-3 py-2.5 text-xs leading-snug h-14 overflow-y-auto ipa-scroll"
-                    style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: shown ? C.text : C.textDim }}
-                  >
+                  <div className="mb-2.5 rounded-lg px-3 py-2 text-xs leading-snug h-12 overflow-y-auto ipa-scroll"
+                    style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: shown ? C.text : C.textDim }}>
                     {shown ? (
-                      <span>
-                        <strong style={{ color: C.accentSoft }}>{shown.label}</strong>
-                        <span style={{ color: C.line }}> — </span>
-                        {shown.desc}
-                      </span>
+                      <span><strong style={{ color: C.accentSoft }}>{shown.label}</strong><span style={{ color: C.line }}> — </span>{shown.desc}</span>
                     ) : (
                       <span>Di chuột (hoặc chạm) vào một phong cách để xem mô tả; bấm để chọn.</span>
                     )}
@@ -3210,112 +3281,143 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 );
               })()}
 
-              {/* ── Tỷ lệ trộn: chỉ hiện khi blend đang áp đủ 2 style ── */}
+              {/* Tỷ lệ trộn — chỉ khi blend áp đủ 2 style */}
               {!styleImg && blendMode && stylePreset && styleB && styleB !== stylePreset && (
-                <div className="mt-3">
+                <div className="mb-3">
                   <div className="flex items-center justify-between text-[11px] mb-1">
                     <span style={{ color: C.text }}><strong style={{ color: C.accentSoft }}>{presetName(stylePreset)}</strong> {blendRatio}%</span>
                     <span className="uppercase tracking-[0.14em]" style={{ color: C.textFaint }}>Tỷ lệ trộn</span>
                     <span style={{ color: C.text }}>{100 - blendRatio}% <strong style={{ color: C.accentSoft }}>{presetName(styleB)}</strong></span>
                   </div>
-                  <input
-                    type="range" min={50} max={90} step={5}
-                    value={blendRatio}
-                    onChange={(e) => changeBlendRatio(Number(e.target.value))}
-                    className="w-full"
-                    style={{ accentColor: C.accent }}
-                  />
-                  {platform === "midjourney" && (
-                    <p className="text-[11px] mt-1.5 leading-snug" style={{ color: C.textFaint }}>
-                      Midjourney mã hóa tỷ lệ bằng multi-prompt weight:{" "}
-                      <span style={{ color: C.accentSoft, fontFamily: MONO }}>
-                        {presetName(stylePreset)}::1 {presetName(styleB)}::{mjSecondaryWeight(blendRatio)}
-                      </span>{" "}
-                      — đổi slider sẽ đổi trọng số, nên ratio tác động thật chứ không chỉ là chữ.
-                    </p>
-                  )}
+                  <input type="range" min={50} max={90} step={5} value={blendRatio}
+                    onChange={(e) => changeBlendRatio(Number(e.target.value))} className="w-full" style={{ accentColor: C.accent }} />
                 </div>
               )}
-              
-              {/* Chips gom theo NHÓM. Mỗi nhóm có nhãn nhỏ + grid chip. */}
-              {Array.from(new Set(STYLE_PRESETS.map((p) => p.group))).map((grp, gi) => (
-                <div key={grp} className={`mb-2.5 last:mb-0 ${gi === 0 ? "mt-4" : ""}`}>
-                  <p className="text-[11px] uppercase tracking-[0.16em] mb-1.5" style={{ color: C.textFaint }}>{grp}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-2 gap-2.5">
-                    {STYLE_PRESETS.filter((p) => p.group === grp).map((p) => {
-                      const on = stylePreset === p.id && !styleImg;                                  // CHÍNH
-                      const onB = blendMode && styleB === p.id && p.id !== stylePreset && !styleImg;  // PHỤ
-                      const handleClick = () => {
-                        if (styleImg) return;
-                        if (!blendMode) {
-                          // Chế độ đơn: toggle style chính như cũ.
-                          changeStylePreset(stylePreset === p.id ? null : p.id);
-                          return;
-                        }
-                        // Chế độ trộn: click chính → bỏ chính; click phụ → bỏ phụ;
-                        // chưa có chính → đặt làm chính; còn lại → đặt làm phụ.
-                        if (p.id === stylePreset) { changeStylePreset(null); return; }
-                        if (p.id === styleB) { changeStyleB(null); return; }
-                        if (!stylePreset) { changeStylePreset(p.id); return; }
-                        changeStyleB(p.id);
-                      };
+
+              {/* Danh sách preset đã lọc (search + danh mục) */}
+              {(() => {
+                const q = presetQuery.trim().toLowerCase();
+                const list = STYLE_PRESETS.filter((p) => {
+                  const okCat = !presetCat || p.group === presetCat;
+                  const okQ = !q || p.label.toLowerCase().includes(q) || (p.desc || "").toLowerCase().includes(q);
+                  return okCat && okQ;
+                });
+                if (list.length === 0) {
+                  return (
+                    <div className="rounded-lg px-3 py-6 text-center text-xs" style={{ background: C.inputBg, border: `1px dashed ${C.line}`, color: C.textFaint }}>
+                      Không tìm thấy phong cách phù hợp.
+                    </div>
+                  );
+                }
+                const onClickPreset = (p) => {
+                  if (styleImg) return;
+                  if (!blendMode) { changeStylePreset(stylePreset === p.id ? null : p.id); return; }
+                  if (p.id === stylePreset) { changeStylePreset(null); return; }
+                  if (p.id === styleB) { changeStyleB(null); return; }
+                  if (!stylePreset) { changeStylePreset(p.id); return; }
+                  changeStyleB(p.id);
+                };
+                const thumbOf = (p) => STYLE_IMAGES[p.id];
+
+                if (presetView === "list") {
+                  return (
+                    <div className="flex flex-col gap-1.5">
+                      {list.map((p) => {
+                        const on = stylePreset === p.id && !styleImg;
+                        const onB = blendMode && styleB === p.id && p.id !== stylePreset && !styleImg;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => onClickPreset(p)}
+                            onMouseEnter={() => setPresetHover(p.id)}
+                            onMouseLeave={() => setPresetHover(null)}
+                            disabled={!!styleImg}
+                            title={p.desc}
+                            className="group relative flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-all"
+                            style={{ ...(on ? activeBtn : onB ? activeBtnSecondary : idleBtn), cursor: styleImg ? "not-allowed" : "pointer" }}
+                          >
+                            <div className="relative shrink-0">
+                              {thumbOf(p) ? (
+                                <img src={thumbOf(p)} alt={p.label} loading="lazy" className="object-cover rounded-md block"
+                                  style={{ width: 64, height: 42, border: `1px solid ${on ? C.onAccent : C.lineSoft}` }} />
+                              ) : (
+                                <div className="rounded-md flex items-center justify-center" style={{ width: 64, height: 42, background: C.panel2, border: `1px dashed ${C.line}` }}>
+                                  <ImageIcon className="w-4 h-4" style={{ color: C.textFaint }} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[12px] font-semibold leading-tight truncate" style={{ color: on ? C.onAccent : C.text }}>{p.label}</div>
+                              <div className="text-[10px] leading-tight truncate" style={{ color: on ? C.onAccent : C.textFaint }}>{p.group}</div>
+                            </div>
+                            {blendMode && (on || onB) && (
+                              <span className="shrink-0 rounded px-1 text-[8px] font-bold uppercase tracking-wider"
+                                style={{ background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}>
+                                {on ? "Chính" : "Phụ"}
+                              </span>
+                            )}
+                            {(on || onB) && (
+                              <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full"
+                                style={{ background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}>
+                                <Check className="w-3 h-3" />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                // GRID — 2 cột, tile 1.5:1, check overlay góc phải-dưới
+                return (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {list.map((p) => {
+                      const on = stylePreset === p.id && !styleImg;
+                      const onB = blendMode && styleB === p.id && p.id !== stylePreset && !styleImg;
                       return (
                         <button
                           key={p.id}
-                          onClick={handleClick}
+                          onClick={() => onClickPreset(p)}
                           onMouseEnter={() => setPresetHover(p.id)}
                           onMouseLeave={() => setPresetHover(null)}
                           disabled={!!styleImg}
                           title={p.desc}
                           className="group relative rounded-lg px-2.5 py-2 text-left transition-all duration-150"
-                          style={{
-                            ...(on ? activeBtn : onB ? activeBtnSecondary : idleBtn),
-                            cursor: styleImg ? "not-allowed" : "pointer",
-                          }}
+                          style={{ ...(on ? activeBtn : onB ? activeBtnSecondary : idleBtn), cursor: styleImg ? "not-allowed" : "pointer" }}
                         >
                           <div className="relative mb-1.5">
-                          {(() => {
-                            const src = STYLE_IMAGES[p.id];
-                            return src ? (
-                              <img
-                                src={src}
-                                alt={p.label}
-                                loading="lazy"
-                                className="w-full object-cover rounded-md block"
-                                style={{ aspectRatio: "16 / 9", border: `1px solid ${on ? C.onAccent : C.lineSoft}` }}
-                              />
+                            {thumbOf(p) ? (
+                              <img src={thumbOf(p)} alt={p.label} loading="lazy" className="w-full object-cover rounded-md block"
+                                style={{ aspectRatio: "1.5 / 1", border: `1px solid ${on ? C.onAccent : C.lineSoft}` }} />
                             ) : (
-                              <div
-                                className="w-full rounded-md flex items-center justify-center"
-                                style={{ aspectRatio: "16 / 9", background: C.panel2, border: `1px dashed ${C.line}` }}
-                              >
+                              <div className="w-full rounded-md flex items-center justify-center" style={{ aspectRatio: "1.5 / 1", background: C.panel2, border: `1px dashed ${C.line}` }}>
                                 <ImageIcon className="w-4 h-4" style={{ color: C.textFaint }} />
                               </div>
-                            );
-                          })()}
-                          {/* Nút kính lúp — góc phải-dưới banner. Mobile: luôn hiện; desktop: chỉ hiện khi hover card (group-hover).
-                              Dùng <span role=button> vì card cha là <button> (không lồng button). stopPropagation để không chọn preset. */}
-                          {STYLE_IMAGES[p.id] && (
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              title="Phóng to ảnh"
-                              aria-label={`Phóng to ảnh ${p.label}`}
-                              onClick={(e) => { e.stopPropagation(); setZoomStyle(p); }}
-                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setZoomStyle(p); } }}
-                              className="absolute bottom-0.5 right-0.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-25 md:opacity-0 md:group-hover:opacity-100 hover:scale-120"
-                              style={{ background: "rgba(0,0,0,0.55)", color: "#9A9A9A", backdropFilter: "blur(2px)" }}
-                            >
-                              <ZoomIn className="w-3.5 h-3.5" />
-                            </span>
-                          )}
+                            )}
+                            {(on || onB) && (
+                              <span className="absolute bottom-1 right-1 z-10 inline-flex items-center justify-center w-5 h-5 rounded-full"
+                                style={{ background: on ? C.accent : C.accentSoft, color: C.onAccent, border: `1.5px solid ${C.onAccent}` }}>
+                                <Check className="w-3 h-3" />
+                              </span>
+                            )}
+                            {thumbOf(p) && (
+                              <span
+                                role="button" tabIndex={0}
+                                title="Phóng to ảnh" aria-label={`Phóng to ảnh ${p.label}`}
+                                onClick={(e) => { e.stopPropagation(); setZoomStyle(p); }}
+                                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setZoomStyle(p); } }}
+                                className="absolute bottom-0.5 left-0.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-25 md:opacity-0 md:group-hover:opacity-100 hover:scale-120"
+                                style={{ background: "rgba(0,0,0,0.55)", color: "#cdd6e0", backdropFilter: "blur(2px)" }}
+                              >
+                                <ZoomIn className="w-3.5 h-3.5" />
+                              </span>
+                            )}
                           </div>
                           <div className="text-[12px] font-semibold leading-tight" style={{ color: on ? C.onAccent : C.text }}>{p.label}</div>
                           {blendMode && (on || onB) && (
-                            <span
-                              className="absolute top-1 right-1 rounded px-1 text-[8px] font-bold uppercase tracking-wider leading-tight"
-                              style={{ background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}
-                            >
+                            <span className="absolute top-1 right-1 rounded px-1 text-[8px] font-bold uppercase tracking-wider leading-tight"
+                              style={{ background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}>
                               {on ? "Chính" : "Phụ"}
                             </span>
                           )}
@@ -3323,8 +3425,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                       );
                     })}
                   </div>
-                </div>
-              ))}
+                );
+              })()}
 
             </div>
           </div>
@@ -3593,13 +3695,27 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           )}
 
           {showHistory ? renderHistory() : null}
+
+          {/* badge phiên bản — nằm trong thân cuộn (desktop), giống mockup */}
+          <div className="hidden md:block mt-5 pt-3 text-center" style={{ borderTop: `1px solid ${C.line}` }}>
+            <a href="https://artius.vn/" target="_blank" rel="noopener noreferrer" className="block text-[11px] font-semibold mb-1 transition-colors" style={{ color: C.accent }}>
+              CÔNG TY THIẾT KẾ &amp; XÂY DỰNG ARTIUS
+            </a>
+            <span className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider" style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}>
+              build {APP_VERSION}
+            </span>
+          </div>
+          </div>{/* /THÂN CUỘN CỘT TRÁI */}
+
+          {/* CTA cố định đáy cột trái (desktop) — Việc 4 */}
+          <div className="ipa-cta hidden md:block">{actionButton}</div>
           </div>{/* /CỘT TRÁI */}
 
           {/* ===== CỘT PHẢI (desktop): KẾT QUẢ — luôn hiện trên desktop; mobile: hiện theo tab ===== */}
           <div className={(activeTab === "result" ? "" : "hidden ") + "ipa-col-right"}>
             {/* C: toolbar canvas (desktop) */}
             <div className="hidden md:flex items-center justify-between mb-3 pb-3" style={{ borderBottom: `1px solid ${C.line}` }}>
-              <div className="inline-flex shrink-0 mr-3">{actionButton}</div>
+              <div className="flex items-center gap-2 shrink-0 mr-3"><span className="text-[13px] font-bold tracking-tight" style={{ color: C.text }}>Khung làm việc</span></div>
               <div className="flex items-center gap-1.5 text-[11px]" style={{ color: C.textDim, fontFamily: MONO }}>
                 <span className="rounded-md px-2 py-1" style={{ background: `${C.accent}1a`, border: `1px solid ${C.accent}66`, color: C.accent, fontWeight: 700 }}>Đang chọn {aspectRatio}</span>
                 {modelImg?.w && modelImg?.h ? (
@@ -3615,6 +3731,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 ) : null}
               </div>
             </div>
+            {/* ===== VIEWPORT CANVAS — desktop cuộn nội bộ (Việc 1+2) ===== */}
+            <div className="ipa-canvas-scroll ipa-scroll">
             {/* C: empty hero (desktop) — khi chưa có prompt/ảnh */}
             {!genImg && genStatus !== "generating" && !progressActive && (
               <div className="hidden md:flex flex-col items-center justify-center text-center py-4 px-4 ipa-anim">
@@ -3802,9 +3920,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 )}
 
                 <div className="md:hidden">{renderPromptPanel()}</div>
+            </div>{/* /VIEWPORT CANVAS */}
 
-                {/* B1: strip LỊCH SỬ ngang (desktop) — thumbnail ảnh đã tạo */}
-                <div className="hidden md:block mt-6 pt-4" style={{ borderTop: `1px solid ${C.line}` }}>
+                {/* B1: strip LỊCH SỬ ngang (desktop) — footer cố định của canvas (Việc 1) */}
+                <div className="hidden md:block mt-4 pt-3" style={{ borderTop: `1px solid ${C.line}`, flex: "none" }}>
                   <div className="flex items-center gap-2 mb-2">
                     <History className="w-3.5 h-3.5" style={{ color: C.accentSoft }} />
                     <span className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: C.textDim }}>Lịch sử</span>
