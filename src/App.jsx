@@ -2522,6 +2522,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           {me.sub.charAt(0).toUpperCase()}
         </div>
       ) : null}
+      {/* số version — đáy nav rail (desktop), chỉ hiện version */}
+      <div className="px-1 pt-2 text-center" style={{ fontFamily: MONO, color: C.textFaint, fontSize: 7.5, lineHeight: 1.3, letterSpacing: "0.02em", wordBreak: "break-word" }}>
+        {APP_VERSION}
+      </div>
     </nav>
   );
 
@@ -3695,16 +3699,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           )}
 
           {showHistory ? renderHistory() : null}
-
-          {/* badge phiên bản — nằm trong thân cuộn (desktop), giống mockup */}
-          <div className="hidden md:block mt-5 pt-3 text-center" style={{ borderTop: `1px solid ${C.line}` }}>
-            <a href="https://artius.vn/" target="_blank" rel="noopener noreferrer" className="block text-[11px] font-semibold mb-1 transition-colors" style={{ color: C.accent }}>
-              CÔNG TY THIẾT KẾ &amp; XÂY DỰNG ARTIUS
-            </a>
-            <span className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider" style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}>
-              build {APP_VERSION}
-            </span>
-          </div>
           </div>{/* /THÂN CUỘN CỘT TRÁI */}
 
           {/* CTA cố định đáy cột trái (desktop) — Việc 4 */}
@@ -3974,46 +3968,38 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </button>
         </div>
 
-        {/* Footer attribution */}
-        <p className="mt-10 text-center text-[12px] leading-relaxed" style={{ color: C.textDim }}>
-          <a
-            href="https://artius.vn/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold transition-colors"
-            style={{ color: C.accent }}
-          >
-            CÔNG TY THIẾT KẾ VÀ XÂY DỰNG ARTIUS
-          </a>
-        </p>
-
-        <p className="mt-0 text-center" style={{ color: C.textFaint }}>
-          <span
-            className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider"
-            style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}
-          >
-            build {APP_VERSION}
-            
-      {/* ===== LIGHTBOX phóng to ảnh Style Preset ===== */}
-      {zoomStyle && (
-        <div
-          onClick={() => setZoomStyle(null)}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
-          style={{ background: "rgba(0,0,0,0.90)", backdropFilter: "blur(2px)" }}
-        >
-          <div className="relative w-full max-w-[920px]" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={STYLE_IMAGES[zoomStyle.id]}
-              alt={zoomStyle.label}
-              className="w-full rounded-xl"
-              style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
-            />
-            <div className="mt-2 text-center text-sm font-regular" style={{ color: "#fff" }}>{zoomStyle.label}</div>
-          </div>
+        {/* Footer — chỉ hiện trên mobile (desktop: version nằm ở đáy nav rail) */}
+        <div className="md:hidden">
+          <p className="mt-10 text-center text-[12px] leading-relaxed" style={{ color: C.textDim }}>
+            <a href="https://artius.vn/" target="_blank" rel="noopener noreferrer" className="font-semibold transition-colors" style={{ color: C.accent }}>
+              CÔNG TY THIẾT KẾ VÀ XÂY DỰNG ARTIUS
+            </a>
+          </p>
+          <p className="mt-0 text-center" style={{ color: C.textFaint }}>
+            <span className="inline-block rounded-md px-2 py-0.5 text-[8px] tracking-wider" style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.accentSoft, fontFamily: MONO }}>
+              build {APP_VERSION}
+            </span>
+          </p>
         </div>
-      )}
-          </span>
-        </p>
+
+        {/* ===== LIGHTBOX phóng to ảnh Style Preset (đã tách khỏi footer) ===== */}
+        {zoomStyle && (
+          <div
+            onClick={() => setZoomStyle(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
+            style={{ background: "rgba(0,0,0,0.90)", backdropFilter: "blur(2px)" }}
+          >
+            <div className="relative w-full max-w-[920px]" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={STYLE_IMAGES[zoomStyle.id]}
+                alt={zoomStyle.label}
+                className="w-full rounded-xl"
+                style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
+              />
+              <div className="mt-2 text-center text-sm font-regular" style={{ color: "#fff" }}>{zoomStyle.label}</div>
+            </div>
+          </div>
+        )}
       </div>
         </div>{/* /content col */}
       </div>{/* /body row */}
