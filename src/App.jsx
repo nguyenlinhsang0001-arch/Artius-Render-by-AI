@@ -2404,7 +2404,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       className="sticky top-0 z-30 w-full"
       style={{ background: `${C.barBg}f2`, borderBottom: `1px solid ${C.line}`, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
     >
-      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center gap-3">
+      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:pl-3 md:pr-6 h-14 md:h-16 flex items-center gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <a href="https://artius.vn/" target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0" title="ARTIUS — artius.vn">
             <img src={ARTIUS_LOGO} alt="ARTIUS" className="h-7 md:h-8 w-auto shrink-0" style={{ opacity: 0.95 }} />
