@@ -2980,7 +2980,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       <div className="flex flex-1 md:min-h-0">
         {navRailEl}
         <div className="flex-1 min-w-0 md:flex md:flex-col md:min-h-0">
-      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:px-6 pt-4 md:pt-1 pb-4 md:pb-6 md:flex-1 md:min-h-0 md:flex md:flex-col md:overflow-hidden">
+      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:px-2 pt-4 md:pt-1 pb-4 md:pb-6 md:flex-1 md:min-h-0 md:flex md:flex-col md:overflow-hidden">
 
 
         {/* =====================================================
