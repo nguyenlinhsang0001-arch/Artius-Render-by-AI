@@ -3708,7 +3708,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 </a>
               ) : <span />}
               <div className="flex items-center gap-1.5 text-[11px]" style={{ color: C.textDim, fontFamily: MONO }}>
-                <span className="rounded-md px-2 py-1" style={{ background: `${C.accent}1a`, border: `1px solid ${C.accent}66`, color: C.accent, fontWeight: 700 }}>Đang chọn {aspectRatio}</span>
+                <span className="rounded-md px-2 py-1" style={{ background: `${C.accent}1a`, border: `px solid ${C.accent}66`, color: C.accent, fontWeight: 700 }}>Đang chọn {aspectRatio}</span>
                 {modelImg?.w && modelImg?.h ? (
                   <button
                     type="button"
@@ -3862,12 +3862,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                     </div>
                     )}
                     
-                    {genStatus === "error" && genError && (
-                      <div className="rounded-lg p-2.5 text-xs mb-2.5 whitespace-pre-wrap" style={{ background: `${C.neg}1a`, border: `1px solid ${C.neg}55`, color: C.neg }}>
-                        {genError}
-                      </div>
-                    )}
-
                     {genStatus === "generating" && (
                       <div className="rounded-xl flex items-center justify-center ipa-gen-fill" style={{ aspectRatio: "16 / 10", background: C.inputBg, border: `1px dashed ${C.lineSoft}`, color: C.textDim }}>
                         <span className="inline-flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> đang dựng ảnh…</span>
@@ -3906,6 +3900,21 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   </div>
                 )}
 
+{genStatus === "error" && genError && (
+  <div
+    className="ipa-anim rounded-lg p-2.5 text-xs whitespace-pre-wrap w-full"
+    style={{
+      background: `${C.neg}1a`,
+      border: `1px solid ${C.neg}55`,
+      color: C.neg,
+      marginTop: "auto",      // đẩy banner xuống đáy canvas
+      alignSelf: "stretch",   // override align-items:center -> full width
+    }}
+  >
+    {genError}
+  </div>
+)}
+              
                 <div className="md:hidden">{renderPromptPanel()}</div>
             </div>{/* /VIEWPORT CANVAS */}
 
