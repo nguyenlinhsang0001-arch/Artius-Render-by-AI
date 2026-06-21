@@ -3840,7 +3840,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
             {/* IMAGE — lên trên cùng khu Kết quả, dính theo cuộn (sticky) */}
                 {/* === RENDER ẢNH bằng gpt-image-2 (ChatGPT) — chỉ Nano Banana + có MODEL === */}
-                {platform === "nanobanana" && prompts?.nanobanana && modelImg && (!isDesktop || genImg || genStatus === "generating" || genStatus === "error") && (
                   <div className="mt-3 rounded-2xl p-3 ipa-img-sticky ipa-result-panel" style={{ background: C.bg, border: `1px solid ${C.line}` }}>
                     {!isDesktop && (
                     <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
