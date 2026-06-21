@@ -2980,7 +2980,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       <div className="flex flex-1 md:min-h-0">
         {navRailEl}
         <div className="flex-1 min-w-0 md:flex md:flex-col md:min-h-0">
-      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:px-2 pt-4 md:pt-1 pb-4 md:pb-6 md:flex-1 md:min-h-0 md:flex md:flex-col md:overflow-hidden">
+      <div className="w-full max-w-[1536px] md:max-w-none mx-auto px-4 md:px-6 pt-4 md:pt-1 pb-4 md:pb-6 md:flex-1 md:min-h-0 md:flex md:flex-col md:overflow-hidden">
 
 
         {/* =====================================================
@@ -3708,7 +3708,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 </a>
               ) : <span />}
               <div className="flex items-center gap-1.5 text-[11px]" style={{ color: C.textDim, fontFamily: MONO }}>
-                <span className="rounded-md px-2 py-1" style={{ background: `${C.accent}1a`, border: `px solid ${C.accent}66`, color: C.accent, fontWeight: 700 }}>Đang chọn {aspectRatio}</span>
+                <span className="rounded-md px-2 py-1" style={{ background: `${C.accent}1a`, border: `1px solid ${C.accent}66`, color: C.accent, fontWeight: 700 }}>Đang chọn {aspectRatio}</span>
                 {modelImg?.w && modelImg?.h ? (
                   <button
                     type="button"
@@ -3840,6 +3840,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
             {/* IMAGE — lên trên cùng khu Kết quả, dính theo cuộn (sticky) */}
                 {/* === RENDER ẢNH bằng gpt-image-2 (ChatGPT) — chỉ Nano Banana + có MODEL === */}
+                {platform === "nanobanana" && prompts?.nanobanana && modelImg && (!isDesktop || genImg || genStatus === "generating" || genStatus === "error") && (
                   <div className="mt-3 rounded-2xl p-3 ipa-img-sticky ipa-result-panel" style={{ background: C.bg, border: `1px solid ${C.line}` }}>
                     {!isDesktop && (
                     <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
@@ -3861,6 +3862,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                     </div>
                     )}
                     
+                    {genStatus === "error" && genError && (
+                      <div className="rounded-lg p-2.5 text-xs mb-2.5 whitespace-pre-wrap" style={{ background: `${C.neg}1a`, border: `1px solid ${C.neg}55`, color: C.neg }}>
+                        {genError}
+                      </div>
+                    )}
+
                     {genStatus === "generating" && (
                       <div className="rounded-xl flex items-center justify-center ipa-gen-fill" style={{ aspectRatio: "16 / 10", background: C.inputBg, border: `1px dashed ${C.lineSoft}`, color: C.textDim }}>
                         <span className="inline-flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> đang dựng ảnh…</span>
@@ -3899,21 +3906,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   </div>
                 )}
 
-{genStatus === "error" && genError && (
-  <div
-    className="ipa-anim rounded-lg p-2.5 text-xs whitespace-pre-wrap w-full"
-    style={{
-      background: `${C.neg}1a`,
-      border: `1px solid ${C.neg}55`,
-      color: C.neg,
-      marginTop: "auto",      // đẩy banner xuống đáy canvas
-      alignSelf: "stretch",   // override align-items:center -> full width
-    }}
-  >
-    {genError}
-  </div>
-)}
-              
                 <div className="md:hidden">{renderPromptPanel()}</div>
             </div>{/* /VIEWPORT CANVAS */}
 
