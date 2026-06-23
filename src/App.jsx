@@ -1090,6 +1090,9 @@ export default function InteriorPromptAgent() {
     const r = el.getBoundingClientRect();
     return Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
   };
+  // Nắm-kéo ngang dải nhóm style (thay cho thanh cuộn).
+  const catScrollRef = useRef(null);
+  const catDrag = useRef({ down: false, moved: false, startX: 0, startLeft: 0 });
   // Thu gọn cột Accent (desktop) để mở rộng vùng kết quả.
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   // Chế độ so sánh: "slider" (thanh trượt chồng) | "side" (2 ảnh cạnh nhau).
@@ -2983,6 +2986,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-scroll::-webkit-scrollbar-track { background: transparent; }
         .ipa-scroll::-webkit-scrollbar-thumb { background: ${C.line}; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
         .ipa-scroll::-webkit-scrollbar-thumb:hover { background: ${C.railIcon}; background-clip: padding-box; }
+        /* Dải nhóm style: nắm-kéo ngang, ẩn hẳn thanh cuộn */
+        .ipa-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .ipa-noscrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
         /* Nav rail: nền accent sáng nhẹ (flush) khi rê chuột vào */
         .ipa-navbtn { border-radius: 12px; transition: background .18s ease, transform .15s ease, opacity .18s ease; }
         .ipa-navbtn:not(:disabled):hover { background: ${C.accent}1f; opacity: 1 !important; }
@@ -3297,17 +3303,34 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 )}
               </div>
 
-              {/* Tabs danh mục */}
-              <div className="flex gap-1.5 overflow-x-auto ipa-scroll pb-1.5 mb-2">
+              {/* Tabs danh mục — nắm-kéo ngang để xem nhóm bị ẩn (không cần thanh cuộn) */}
+              <div
+                ref={catScrollRef}
+                className="flex gap-1.5 overflow-x-auto ipa-scroll ipa-noscrollbar pb-1.5 mb-2"
+                style={{ cursor: "grab", touchAction: "pan-y", scrollBehavior: "auto" }}
+                onPointerDown={(e) => {
+                  const el = catScrollRef.current; if (!el) return;
+                  catDrag.current = { down: true, moved: false, startX: e.clientX, startLeft: el.scrollLeft };
+                  el.style.cursor = "grabbing";
+                }}
+                onPointerMove={(e) => {
+                  const el = catScrollRef.current; const d = catDrag.current; if (!el || !d.down) return;
+                  const dx = e.clientX - d.startX;
+                  if (Math.abs(dx) > 4) d.moved = true;
+                  el.scrollLeft = d.startLeft - dx;
+                }}
+                onPointerUp={(e) => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; if (catDrag.current.down) { try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {} } catDrag.current.down = false; }}
+                onPointerLeave={() => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; catDrag.current.down = false; }}
+              >
                 {[{ id: "", label: "Tất cả" }, ...Array.from(new Set(STYLE_PRESETS.map((pp) => pp.group))).map((g) => ({ id: g, label: g }))].map((cat) => {
                   const onc = presetCat === cat.id;
                   return (
                     <button
                       key={cat.id || "all"}
-                      onClick={() => setPresetCat(cat.id)}
+                      onClick={() => { if (catDrag.current.moved) return; setPresetCat(cat.id); }}
                       disabled={!!styleImg}
                       className="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors whitespace-nowrap"
-                      style={{ ...(onc ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : "pointer" }}
+                      style={{ ...(onc ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : "inherit" }}
                     >
                       {cat.label}
                     </button>
@@ -3318,7 +3341,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               {/* Dải "Đang dùng" — chip preset đang chọn (Chính/Phụ khi Trộn); × để bỏ */}
               {!styleImg && (stylePreset || (blendMode && styleB)) && (
                 <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider shrink-0" style={{ color: C.textFaint }}>Đang dùng:</span>
                   {stylePreset && (
                     <span className="inline-flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 text-[11px] font-semibold" style={{ background: C.accent, color: C.onAccent }}>
                       {blendMode && <span className="text-[8px] font-bold uppercase opacity-80">Chính</span>}
