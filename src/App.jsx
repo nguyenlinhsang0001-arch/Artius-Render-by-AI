@@ -3415,12 +3415,15 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   );
                 }
 
-                // GRID — 2 cột, tile 1.5:1, check overlay góc phải-dưới
+                // GRID — card ảnh lớn, nhãn đè gradient, ring accent khi chọn, hover zoom
                 return (
                   <div className="grid grid-cols-2 gap-2.5">
                     {list.map((p) => {
                       const on = stylePreset === p.id && !styleImg;
                       const onB = blendMode && styleB === p.id && p.id !== stylePreset && !styleImg;
+                      const sel = on || onB;
+                      const hov = presetHover === p.id && !styleImg;
+                      const ring = on ? C.accent : C.accentSoft;
                       return (
                         <button
                           key={p.id}
@@ -3429,21 +3432,33 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                           onMouseLeave={() => setPresetHover(null)}
                           disabled={!!styleImg}
                           title={p.desc}
-                          className="group relative rounded-lg px-2.5 py-2 text-left transition-all duration-150"
-                          style={{ ...(on ? activeBtn : onB ? activeBtnSecondary : idleBtn), cursor: styleImg ? "not-allowed" : "pointer" }}
+                          className="group relative block w-full text-left rounded-xl overflow-hidden transition-all duration-150"
+                          style={{
+                            background: C.panel2,
+                            boxShadow: sel ? `0 0 0 2px ${ring}, 0 6px 18px -6px rgba(0,0,0,0.5)` : (hov ? "0 8px 20px -8px rgba(0,0,0,0.55)" : "none"),
+                            transform: hov && !sel ? "translateY(-2px)" : "none",
+                            cursor: styleImg ? "not-allowed" : "pointer",
+                          }}
                         >
-                          <div className="relative mb-1.5">
+                          <div className="relative">
                             {thumbOf(p) ? (
-                              <img src={thumbOf(p)} alt={p.label} loading="lazy" className="w-full object-cover rounded-md block"
-                                style={{ aspectRatio: "1.5 / 1", border: `1px solid ${on ? C.onAccent : C.lineSoft}` }} />
+                              <img src={thumbOf(p)} alt={p.label} loading="lazy"
+                                className="w-full object-cover block transition-transform duration-200"
+                                style={{ aspectRatio: "1.4 / 1", transform: hov ? "scale(1.05)" : "scale(1)" }} />
                             ) : (
-                              <div className="w-full rounded-md flex items-center justify-center" style={{ aspectRatio: "1.5 / 1", background: C.panel2, border: `1px dashed ${C.line}` }}>
-                                <ImageIcon className="w-4 h-4" style={{ color: C.textFaint }} />
+                              <div className="w-full flex items-center justify-center" style={{ aspectRatio: "1.4 / 1", background: C.panel2 }}>
+                                <ImageIcon className="w-5 h-5" style={{ color: C.textFaint }} />
                               </div>
                             )}
-                            {(on || onB) && (
-                              <span className="absolute bottom-1 right-1 z-10 inline-flex items-center justify-center w-5 h-5 rounded-full"
-                                style={{ background: on ? C.accent : C.accentSoft, color: C.onAccent, border: `1.5px solid ${C.onAccent}` }}>
+                            {/* Gradient + nhãn đè đáy ảnh */}
+                            <div className="absolute inset-x-0 bottom-0 px-2.5 pt-6 pb-2 pointer-events-none"
+                              style={{ background: "linear-gradient(to top, rgba(8,10,15,0.92) 0%, rgba(8,10,15,0.6) 45%, transparent 100%)" }}>
+                              <div className="text-[12px] font-semibold leading-tight truncate" style={{ color: "#fff" }}>{p.label}</div>
+                              <div className="text-[9px] leading-tight truncate" style={{ color: "rgba(255,255,255,0.6)" }}>{p.group}</div>
+                            </div>
+                            {sel && (
+                              <span className="absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center w-5 h-5 rounded-full"
+                                style={{ background: ring, color: C.onAccent, border: `1.5px solid ${C.onAccent}` }}>
                                 <Check className="w-3 h-3" />
                               </span>
                             )}
@@ -3453,20 +3468,19 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                                 title="Phóng to ảnh" aria-label={`Phóng to ảnh ${p.label}`}
                                 onClick={(e) => { e.stopPropagation(); setZoomStyle(p); }}
                                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setZoomStyle(p); } }}
-                                className="absolute bottom-0.5 left-0.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-25 md:opacity-0 md:group-hover:opacity-100 hover:scale-120"
+                                className="absolute top-1.5 left-1.5 z-20 inline-flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-opacity duration-150 opacity-25 md:opacity-0 md:group-hover:opacity-100 hover:scale-120"
                                 style={{ background: "rgba(0,0,0,0.55)", color: "#cdd6e0", backdropFilter: "blur(2px)" }}
                               >
                                 <ZoomIn className="w-3.5 h-3.5" />
                               </span>
                             )}
+                            {blendMode && sel && (
+                              <span className="absolute z-10 rounded px-1 text-[8px] font-bold uppercase tracking-wider leading-tight"
+                                style={{ top: 6, left: 28, background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}>
+                                {on ? "Chính" : "Phụ"}
+                              </span>
+                            )}
                           </div>
-                          <div className="text-[12px] font-semibold leading-tight" style={{ color: on ? C.onAccent : C.text }}>{p.label}</div>
-                          {blendMode && (on || onB) && (
-                            <span className="absolute top-1 right-1 rounded px-1 text-[8px] font-bold uppercase tracking-wider leading-tight"
-                              style={{ background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}>
-                              {on ? "Chính" : "Phụ"}
-                            </span>
-                          )}
                         </button>
                       );
                     })}
@@ -3900,7 +3914,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
             {/* IMAGE — lên trên cùng khu Kết quả, dính theo cuộn (sticky) */}
                 {/* === RENDER ẢNH bằng gpt-image-2 (ChatGPT) — chỉ Nano Banana + có MODEL === */}
-                {platform === "nanobanana" && prompts?.nanobanana && modelImg && (!isDesktop || genImg || genStatus === "generating" || genStatus === "error") && (
+                {platform === "nanobanana" && prompts?.nanobanana && modelImg && (!isDesktop || genImg || genStatus === "generating") && (
                   <div className="mt-3 rounded-2xl p-3 ipa-img-sticky ipa-result-panel" style={{ background: C.bg, border: `1px solid ${C.line}` }}>
                     {!isDesktop && (
                     <div className="flex items-center justify-between mb-2.5 gap-2 flex-wrap">
