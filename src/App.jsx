@@ -3753,11 +3753,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   type="button"
                   onClick={() => setLeftCollapsed((v) => !v)}
                   title={leftCollapsed ? "Mở lại bảng điều khiển" : "Thu gọn bảng điều khiển — mở rộng vùng kết quả"}
-                  className="inline-flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 transition-colors"
-                  style={{ border: `1px solid ${C.accent}`, background: leftCollapsed ? C.accent : "transparent", color: leftCollapsed ? C.onAccent : C.accent, fontWeight: 600 }}
+                  className="inline-flex items-center justify-center rounded-lg transition-colors"
+                  style={{ width: 32, height: 32, border: `1px solid ${C.accent}`, background: leftCollapsed ? C.accent : "transparent", color: leftCollapsed ? C.onAccent : C.accent }}
                 >
-                  {leftCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-                  {leftCollapsed ? "Mở rộng" : "Thu gọn"}
+                  {leftCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
                 </button>
                 {genImg && (
                   <a href={genImg} download="interior-gpt-image.png" className="inline-flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5" style={{ border: `1px solid ${C.accent}`, color: C.accent }}>
@@ -3765,7 +3764,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   </a>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-[11px]" style={{ color: C.textDim, fontFamily: MONO }}>
+              <div className={`${leftCollapsed ? "hidden" : "flex"} items-center gap-1.5 text-[11px]`} style={{ color: C.textDim, fontFamily: MONO }}>
                 <span className="rounded-md px-2 py-1" style={{ background: `${C.accent}1a`, border: `px solid ${C.accent}66`, color: C.accent, fontWeight: 700 }}>Đang chọn {aspectRatio}</span>
                 {modelImg?.w && modelImg?.h ? (
                   <button
@@ -4035,7 +4034,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             </div>{/* /VIEWPORT CANVAS */}
 
                 {/* B1: strip LỊCH SỬ ngang (desktop) — footer cố định của canvas (Việc 1) */}
-                <div className="hidden md:block mt-2 pt-1.5" style={{ flex: "none" }}>
+                <div className={`hidden ${leftCollapsed ? "" : "md:block"} mt-2 pt-1.5`} style={{ flex: "none" }}>
                   <div className="flex items-center gap-2 mb-2">
                     <History className="w-3.5 h-3.5" style={{ color: C.accentSoft }} />
                     <span className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: C.textDim }}>Lịch sử</span>
