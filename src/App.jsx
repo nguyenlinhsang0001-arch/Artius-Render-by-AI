@@ -2532,7 +2532,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             disabled={locked}
             onClick={locked ? undefined : () => setNavSection(key)}
             title={locked ? `${label} — chưa có dữ liệu` : label}
-            className="relative w-full flex flex-col items-center justify-center gap-1 py-1.5 transition-colors"
+            className="ipa-navbtn relative w-full flex flex-col items-center justify-center gap-1 py-1.5"
             style={{ color: active ? C.accent : C.railIcon, cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.4 : (active ? 1 : 0.85) }}
           >
             <span aria-hidden="true" style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 3, height: 22, borderRadius: 3, background: active ? C.accent : "transparent" }} />
@@ -2963,11 +2963,16 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-anim { animation: ipa-fade-up .35s ease both; }
         @keyframes ipa-glow { 0%,100% { box-shadow: 0 0 14px -3px ${C.accent}, 0 0 5px -1px ${C.accent}; } 50% { box-shadow: 0 0 24px -1px ${C.accent}, 0 0 10px 0 ${C.accent}; } }
         .ipa-glow { animation: ipa-glow 1.8s ease-in-out infinite; }
-        .ipa-scroll { scrollbar-width: thin; scrollbar-color: ${C.accent} ${C.panel2}; }
-        .ipa-scroll::-webkit-scrollbar { width: 8px; }
-        .ipa-scroll::-webkit-scrollbar-track { background: ${C.panel2}; border-radius: 999px; }
-        .ipa-scroll::-webkit-scrollbar-thumb { background: ${C.accent}; border-radius: 999px; }
-        .ipa-scroll::-webkit-scrollbar-thumb:hover { background: ${C.accentSoft}; }
+        /* Thanh scroll TỐI MÀU — thumb xám đậm trung tính trên track trong suốt */
+        .ipa-scroll { scrollbar-width: thin; scrollbar-color: ${C.line} transparent; }
+        .ipa-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+        .ipa-scroll::-webkit-scrollbar-track { background: transparent; }
+        .ipa-scroll::-webkit-scrollbar-thumb { background: ${C.line}; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+        .ipa-scroll::-webkit-scrollbar-thumb:hover { background: ${C.railIcon}; background-clip: padding-box; }
+        /* Nav rail: nền accent sáng nhẹ (flush) khi rê chuột vào */
+        .ipa-navbtn { border-radius: 12px; transition: background .18s ease, transform .15s ease, opacity .18s ease; }
+        .ipa-navbtn:not(:disabled):hover { background: ${C.accent}1f; opacity: 1 !important; }
+        .ipa-navbtn:not(:disabled):active { transform: scale(0.95); }
         @keyframes ipa-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         .ipa-skel { background: linear-gradient(90deg, ${C.panel2} 25%, ${C.line} 37%, ${C.panel2} 63%); background-size: 200% 100%; animation: ipa-shimmer 1.4s ease-in-out infinite; }
         textarea, input, button { font-family: inherit; }
@@ -3292,8 +3297,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 })}
               </div>
 
-              {/* Hint bar — mô tả preset đang hover/chọn */}
-              {!styleImg && (() => {
+              {/* Hint bar — mô tả preset đang hover/chọn. ĐÃ ẨN theo yêu cầu (đổi false -> true để bật lại). */}
+              {false && !styleImg && (() => {
                 const shownId = presetHover || stylePreset;
                 const shown = STYLE_PRESETS.find((p) => p.id === shownId);
                 return (
