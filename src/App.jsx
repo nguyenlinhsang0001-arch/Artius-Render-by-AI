@@ -664,23 +664,44 @@ function decodeToken(token) {
 // =============================================================
 // UploadBox — ĐỊNH NGHĨA NGOÀI component chính để không bị recreate mỗi render.
 // =============================================================
-function UploadBox({ img, onClick, onDrop, inputRef, onChange, onClear, icon, title, subtitle, active }) {
+function UploadBox({ img, onClick, onFile, inputRef, onChange, onClear, icon, title, subtitle, active }) {
+  // A1+A2: trạng thái kéo-thả (đổi viền/nền để báo "thả được") + dán ảnh từ clipboard.
+  const [drag, setDrag] = useState(false);
+  const hot = active || drag;
+  // Lấy file ảnh từ DataTransfer (kéo-thả) hoặc ClipboardData (dán).
+  const grabImage = (src) => {
+    const item = [...(src?.items || [])].find((it) => it.kind === "file" && it.type.startsWith("image/"));
+    return item ? item.getAsFile() : (src?.files?.[0] || null);
+  };
   return (
     <div
       onClick={onClick}
       role="button"
       tabIndex={0}
-      aria-label={`Tải lên ${title}`}
+      aria-label={`Tải lên ${title} — bấm, kéo-thả hoặc dán ảnh`}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
+      onDragEnter={(e) => { e.preventDefault(); setDrag(true); }}
+      onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDrag(false); }}
+      onDrop={(e) => { e.preventDefault(); setDrag(false); const f = grabImage(e.dataTransfer); if (f) onFile?.(f); }}
+      onPaste={(e) => { const f = grabImage(e.clipboardData); if (f) { e.preventDefault(); onFile?.(f); } }}
       className="relative cursor-pointer rounded-2xl p-4 flex flex-col items-center justify-center text-center min-h-[168px] transition-all duration-200"
       style={{
-        background: C.panel,
-        border: `1.5px dashed ${active ? C.accent : C.line}`,
-        boxShadow: img ? `inset 0 0 0 1px ${C.line}` : "none",
+        background: drag ? C.panel2 : C.panel,
+        border: `1.5px dashed ${hot ? C.accent : C.line}`,
+        boxShadow: img ? `inset 0 0 0 1px ${C.line}` : (drag ? `0 0 0 3px ${C.accent}33` : "none"),
+        transform: drag ? "translateY(-2px)" : "none",
       }}
     >
+      {/* Lớp phủ hướng dẫn khi đang kéo ảnh vào */}
+      {drag && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl pointer-events-none"
+          style={{ background: `${C.accent}1f`, border: `1.5px dashed ${C.accent}`, color: C.accentSoft }}
+        >
+          <span className="text-sm font-semibold">Thả ảnh vào đây</span>
+        </div>
+      )}
       {/* Nút xóa ảnh — chỉ hiện khi đã có ảnh. stopPropagation để không
           kích hoạt onClick mở hộp chọn file của khối cha. */}
       {img && onClear && (
@@ -1059,7 +1080,16 @@ export default function InteriorPromptAgent() {
   const [genImg, setGenImg] = useState(null);
   const [genStatus, setGenStatus] = useState("idle");
   const [genError, setGenError] = useState(null);
-  const [holdOrig, setHoldOrig] = useState(false); // hold-to-compare: giữ trên ảnh -> hiện ảnh MODEL gốc
+  // Trước/Sau (B1): vị trí thanh chia 0..100 (% từ trái). Bên TRÁI = ảnh gốc MODEL, bên PHẢI = ảnh AI.
+  const [comparePos, setComparePos] = useState(50);
+  const compareRef = useRef(null);
+  const compareDragRef = useRef(false);
+  const comparePosFromEvent = (e) => {
+    const el = compareRef.current;
+    if (!el) return 50;
+    const r = el.getBoundingClientRect();
+    return Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+  };
 
   // =============================================================
   // THANH TIẾN TRÌNH (progress bar) — hiệu ứng "load game", CHẠY THUẦN
@@ -1867,7 +1897,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     if (!prompt || !modelImg) return; // guard: cần prompt Nano Banana + MODEL
     setGenStatus("generating");
     setGenError(null);
-    setHoldOrig(false); // tạo ảnh mới -> reset trạng thái so sánh
+    setComparePos(50); // tạo ảnh mới -> đưa thanh so sánh về giữa
 
     // Mọi mức (0–3) đều render bằng images/edits: gửi MODEL (nền/geometry) + STYLE
     // làm pixel base, nên camera/perspective bị ghim cứng bằng pixel ảnh. Mức Mở
@@ -3048,7 +3078,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               <UploadBox
                 img={modelImg}
                 onClick={() => modelRef.current?.click()}
-                onDrop={(e) => { e.preventDefault(); readImage(e.dataTransfer.files?.[0], setModelImgMark); }}
+                onFile={(f) => readImage(f, setModelImgMark)}
                 inputRef={modelRef}
                 onChange={(e) => readImage(e.target.files?.[0], setModelImgMark)}
                 onClear={clearModelImg}
@@ -3160,7 +3190,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 <UploadBox
                   img={styleImg}
                   onClick={() => styleRef.current?.click()}
-                  onDrop={(e) => { e.preventDefault(); readImage(e.dataTransfer.files?.[0], setStyleImgClearPreset); }}
+                  onFile={(f) => readImage(f, setStyleImgClearPreset)}
                   inputRef={styleRef}
                   onChange={(e) => readImage(e.target.files?.[0], setStyleImgClearPreset)}
                   onClear={clearStyleImg}
@@ -3870,31 +3900,40 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
                     {genImg && genStatus !== "generating" && (
                       <div className="ipa-result-body">
-                        {/* Hold-to-compare: giữ (chuột/cảm ứng) trực tiếp trên ảnh -> lộ ảnh MODEL gốc; thả -> về ảnh AI */}
+                        {/* Trước/Sau (B1): kéo thanh chia để so sánh ảnh gốc MODEL (trái) với ảnh AI (phải) */}
                         <div
+                          ref={compareRef}
                           className="relative rounded-xl overflow-hidden select-none ipa-result-frame"
-                          style={{ background: C.bg, touchAction: "none", cursor: "pointer", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
-                          onPointerDown={() => setHoldOrig(true)}
-                          onPointerUp={() => setHoldOrig(false)}
-                          onPointerLeave={() => setHoldOrig(false)}
-                          onPointerCancel={() => setHoldOrig(false)}
+                          style={{ background: C.bg, touchAction: "none", cursor: "ew-resize", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+                          onPointerDown={(e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} compareDragRef.current = true; setComparePos(comparePosFromEvent(e)); }}
+                          onPointerMove={(e) => { if (compareDragRef.current) setComparePos(comparePosFromEvent(e)); }}
+                          onPointerUp={(e) => { try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} compareDragRef.current = false; }}
+                          onPointerCancel={() => { compareDragRef.current = false; }}
                           onContextMenu={(e) => e.preventDefault()}
                         >
                           {/* Ảnh AI: quyết định kích thước khung -> khung không "nhảy" khi đổi ảnh */}
                           <img src={genImg} alt="Kết quả gpt-image-2" className="block w-full" draggable={false} style={{ WebkitTouchCallout: "none", pointerEvents: "none" }} />
-                          {/* Ảnh MODEL gốc: overlay object-contain, nền tối phủ kín vì khác tỷ lệ; chỉ hiện khi đang giữ */}
+                          {/* Ảnh MODEL gốc: cắt theo thanh chia -> phần bên TRÁI là ảnh gốc */}
                           <img
                             src={`data:${modelImg.mediaType};base64,${modelImg.data}`}
                             alt="Ảnh gốc MODEL"
                             draggable={false}
-                            className="absolute inset-0 w-full h-full object-contain transition-opacity duration-75"
-                            style={{ background: C.bg, opacity: holdOrig ? 1 : 0, pointerEvents: "none" }}
+                            className="absolute inset-0 w-full h-full object-contain"
+                            style={{ background: C.bg, clipPath: `inset(0 ${100 - comparePos}% 0 0)`, pointerEvents: "none" }}
                           />
-                          {/* Nhãn trạng thái */}
-                          <span className="absolute top-2 left-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: holdOrig ? C.accentSoft : C.text, pointerEvents: "none" }}>
-                            {holdOrig ? "Gốc (MODEL)" : "AI tạo"}
-                          </span>
+                          {/* Đường chia + tay cầm kéo */}
+                          <div className="absolute top-0 bottom-0" style={{ left: `${comparePos}%`, width: 0, pointerEvents: "none" }}>
+                            <div className="absolute top-0 bottom-0" style={{ left: -1, width: 2, background: "#fff", boxShadow: "0 0 0 1px rgba(0,0,0,0.35)" }} />
+                            <div className="absolute flex items-center justify-center" style={{ top: "50%", left: 0, transform: "translate(-50%,-50%)", width: 32, height: 32, borderRadius: 9999, background: "rgba(0,0,0,0.55)", border: "2px solid #fff", backdropFilter: "blur(2px)" }}>
+                              <ChevronLeft className="w-3.5 h-3.5" style={{ color: "#fff", marginRight: -5 }} />
+                              <ChevronRight className="w-3.5 h-3.5" style={{ color: "#fff", marginLeft: -5 }} />
+                            </div>
+                          </div>
+                          {/* Nhãn 2 đầu */}
+                          <span className="absolute top-2 left-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.accentSoft, pointerEvents: "none" }}>Gốc</span>
+                          <span className="absolute top-2 right-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.text, pointerEvents: "none" }}>AI tạo</span>
                         </div>
+                        <p className="text-[11px] mt-1.5 text-center" style={{ color: C.textFaint }}>Kéo thanh để so sánh ảnh gốc với ảnh AI</p>
                       </div>
                     )}
                   </div>
