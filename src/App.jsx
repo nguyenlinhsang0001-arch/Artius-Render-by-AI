@@ -3311,6 +3311,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 onPointerDown={(e) => {
                   const el = catScrollRef.current; if (!el) return;
                   catDrag.current = { down: true, moved: false, startX: e.clientX, startLeft: el.scrollLeft };
+                  try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
                   el.style.cursor = "grabbing";
                 }}
                 onPointerMove={(e) => {
@@ -3319,8 +3320,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   if (Math.abs(dx) > 4) d.moved = true;
                   el.scrollLeft = d.startLeft - dx;
                 }}
-                onPointerUp={(e) => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; if (catDrag.current.down) { try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {} } catDrag.current.down = false; }}
-                onPointerLeave={() => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; catDrag.current.down = false; }}
+                onPointerUp={(e) => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {} catDrag.current.down = false; }}
+                onPointerCancel={() => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; catDrag.current.down = false; }}
               >
                 {[{ id: "", label: "Tất cả" }, ...Array.from(new Set(STYLE_PRESETS.map((pp) => pp.group))).map((g) => ({ id: g, label: g }))].map((cat) => {
                   const onc = presetCat === cat.id;
@@ -3352,11 +3353,11 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                     </span>
                   )}
                   {blendMode && styleB && (
-                    <span className="inline-flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 text-[11px] font-semibold" style={{ background: C.accentSoft, color: C.onAccent }}>
-                      <span className="text-[8px] font-bold uppercase opacity-80">Phụ</span>
+                    <span className="inline-flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 text-[11px] font-semibold" style={{ background: `color-mix(in srgb, ${C.accent} 42%, ${C.panel2})`, border: `1px solid ${C.accent}`, color: C.text }}>
+                      <span className="text-[8px] font-bold uppercase opacity-70">Phụ</span>
                       {presetName(styleB)}
                       <button type="button" onClick={() => changeStyleB(null)} title="Bỏ chọn" aria-label={`Bỏ ${presetName(styleB)}`}
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full" style={{ background: "rgba(0,0,0,0.18)", cursor: "pointer" }}>
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full" style={{ background: "rgba(0,0,0,0.12)", cursor: "pointer" }}>
                         <X className="w-3 h-3" />
                       </button>
                     </span>
@@ -3476,7 +3477,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                       const onB = blendMode && styleB === p.id && p.id !== stylePreset && !styleImg;
                       const sel = on || onB;
                       const hov = presetHover === p.id && !styleImg;
-                      const ring = on ? C.accent : C.accentSoft;
+                      const ring = on ? C.accent : C.accentDeep;
                       return (
                         <button
                           key={p.id}
@@ -3529,7 +3530,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                             )}
                             {blendMode && sel && (
                               <span className="absolute z-10 rounded px-1 text-[8px] font-bold uppercase tracking-wider leading-tight"
-                                style={{ top: 6, left: 28, background: on ? C.onAccent : C.accent, color: on ? C.accent : C.onAccent }}>
+                                style={{ top: 6, left: 28, background: on ? C.accent : C.accentDeep, color: C.onAccent }}>
                                 {on ? "Chính" : "Phụ"}
                               </span>
                             )}
