@@ -11,7 +11,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="ARTIUS" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    
+
+    <style>
+      body { padding-top: env(titlebar-area-height, 0px); }
+      .app-drag-region { -webkit-app-region: drag; app-region: drag; }
+      .app-drag-region button,
+      .app-drag-region a,
+      .app-drag-region input,
+      .app-drag-region select { -webkit-app-region: no-drag; app-region: no-drag; }
+    </style>
     <!--
       Tailwind qua CDN: cách nhanh nhất để mọi class Tailwind trong App.jsx
       hoạt động mà không cần cài/cấu hình tailwindcss + postcss. Đủ tốt cho công
