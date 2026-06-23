@@ -1090,6 +1090,12 @@ export default function InteriorPromptAgent() {
     const r = el.getBoundingClientRect();
     return Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
   };
+  // Thu gọn cột Accent (desktop) để mở rộng vùng kết quả.
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  // Chế độ so sánh: "slider" (thanh trượt chồng) | "side" (2 ảnh cạnh nhau).
+  const [compareMode, setCompareMode] = useState("slider");
+  const [cmpLeftId, setCmpLeftId] = useState("model");   // nguồn ảnh pane trái (xem 2 ảnh)
+  const [cmpRightId, setCmpRightId] = useState("current"); // nguồn ảnh pane phải
 
   // =============================================================
   // THANH TIẾN TRÌNH (progress bar) — hiệu ứng "load game", CHẠY THUẦN
@@ -2990,6 +2996,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           .ipa-col-left  { display: flex !important; flex-direction: column; min-height: 0; }
           .ipa-col-right { display: flex !important; flex-direction: column; min-height: 0;
             padding-left: 1rem; border-left: 1px solid ${C.line}; }
+          /* Thu gọn cột Accent: ẩn hẳn cột trái, cột kết quả chiếm trọn bề ngang */
+          .ipa-grid.ipa-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+          .ipa-grid.ipa-collapsed .ipa-col-left { display: none !important; }
+          .ipa-grid.ipa-collapsed .ipa-col-right { padding-left: 0; border-left: none; }
           /* thân cuộn cột trái (controls) — vùng cuộn duy nhất của panel Accent */
           .ipa-pane-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-left: 4px; padding-right: 4px; }
           /* CTA cố định đáy cột trái (Việc 4) */
@@ -3022,7 +3032,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             BỐ CỤC CHÍNH: 1 cột dọc — cấu hình (các bước) rồi tới kết quả.
             (Đã bỏ bố cục 2 cột; nay thống nhất 1 cột ở mọi kích thước.)
         ====================================================== */}
-        <div className="ipa-grid">
+        <div className={`ipa-grid${leftCollapsed ? " ipa-collapsed" : ""}`}>
 
           {/* ===== CỘT TRÁI: thanh tab + nút + controls (Nguồn & phong cách / Thiết lập & điều chỉnh) ===== */}
           {/* Cột trái LUÔN hiện (kể cả khi xem Kết quả trên mobile) để thanh tab không biến mất.
@@ -3737,11 +3747,24 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           <div className={(activeTab === "result" ? "" : "hidden ") + "ipa-col-right"}>
             {/* C: toolbar canvas (desktop) */}
             <div className="hidden md:flex items-center justify-between mb-1.5">
-              {genImg ? (
-                <a href={genImg} download="interior-gpt-image.png" className="inline-flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5" style={{ border: `1px solid ${C.accent}`, color: C.accent }}>
-                  <Download className="w-3.5 h-3.5" /> Tải ảnh
-                </a>
-              ) : <span />}
+              <div className="flex items-center gap-1.5">
+                {/* Thu gọn / mở rộng cột Accent để vùng kết quả rộng hơn */}
+                <button
+                  type="button"
+                  onClick={() => setLeftCollapsed((v) => !v)}
+                  title={leftCollapsed ? "Mở lại bảng điều khiển" : "Thu gọn bảng điều khiển — mở rộng vùng kết quả"}
+                  className="inline-flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 transition-colors"
+                  style={{ border: `1px solid ${C.accent}`, background: leftCollapsed ? C.accent : "transparent", color: leftCollapsed ? C.onAccent : C.accent, fontWeight: 600 }}
+                >
+                  {leftCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+                  {leftCollapsed ? "Mở rộng" : "Thu gọn"}
+                </button>
+                {genImg && (
+                  <a href={genImg} download="interior-gpt-image.png" className="inline-flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5" style={{ border: `1px solid ${C.accent}`, color: C.accent }}>
+                    <Download className="w-3.5 h-3.5" /> Tải ảnh
+                  </a>
+                )}
+              </div>
               <div className="flex items-center gap-1.5 text-[11px]" style={{ color: C.textDim, fontFamily: MONO }}>
                 <span className="rounded-md px-2 py-1" style={{ background: `${C.accent}1a`, border: `px solid ${C.accent}66`, color: C.accent, fontWeight: 700 }}>Đang chọn {aspectRatio}</span>
                 {modelImg?.w && modelImg?.h ? (
@@ -3905,40 +3928,89 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
                     {genImg && genStatus !== "generating" && (
                       <div className="ipa-result-body">
-                        {/* Trước/Sau (B1): kéo thanh chia để so sánh ảnh gốc MODEL (trái) với ảnh AI (phải) */}
-                        <div
-                          ref={compareRef}
-                          className="relative rounded-xl overflow-hidden select-none ipa-result-frame"
-                          style={{ background: C.bg, touchAction: "none", cursor: "ew-resize", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
-                          onPointerDown={(e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} compareDragRef.current = true; setComparePos(comparePosFromEvent(e)); }}
-                          onPointerMove={(e) => { if (compareDragRef.current) setComparePos(comparePosFromEvent(e)); }}
-                          onPointerUp={(e) => { try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} compareDragRef.current = false; }}
-                          onPointerCancel={() => { compareDragRef.current = false; }}
-                          onContextMenu={(e) => e.preventDefault()}
-                        >
-                          {/* Ảnh AI: quyết định kích thước khung -> khung không "nhảy" khi đổi ảnh */}
-                          <img src={genImg} alt="Kết quả gpt-image-2" className="block w-full" draggable={false} style={{ WebkitTouchCallout: "none", pointerEvents: "none" }} />
-                          {/* Ảnh MODEL gốc: cắt theo thanh chia -> phần bên TRÁI là ảnh gốc */}
-                          <img
-                            src={`data:${modelImg.mediaType};base64,${modelImg.data}`}
-                            alt="Ảnh gốc MODEL"
-                            draggable={false}
-                            className="absolute inset-0 w-full h-full object-contain"
-                            style={{ background: C.bg, clipPath: `inset(0 ${100 - comparePos}% 0 0)`, pointerEvents: "none" }}
-                          />
-                          {/* Đường chia + tay cầm kéo */}
-                          <div className="absolute top-0 bottom-0" style={{ left: `${comparePos}%`, width: 0, pointerEvents: "none" }}>
-                            <div className="absolute top-0 bottom-0" style={{ left: -1, width: 2, background: "#fff", boxShadow: "0 0 0 1px rgba(0,0,0,0.35)" }} />
-                            <div className="absolute flex items-center justify-center" style={{ top: "50%", left: 0, transform: "translate(-50%,-50%)", width: 32, height: 32, borderRadius: 9999, background: "rgba(0,0,0,0.55)", border: "2px solid #fff", backdropFilter: "blur(2px)" }}>
-                              <ChevronLeft className="w-3.5 h-3.5" style={{ color: "#fff", marginRight: -5 }} />
-                              <ChevronRight className="w-3.5 h-3.5" style={{ color: "#fff", marginLeft: -5 }} />
-                            </div>
-                          </div>
-                          {/* Nhãn 2 đầu */}
-                          <span className="absolute top-2 left-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.accentSoft, pointerEvents: "none" }}>Gốc</span>
-                          <span className="absolute top-2 right-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.text, pointerEvents: "none" }}>AI tạo</span>
+                        {/* Chọn chế độ so sánh: thanh trượt (chồng) hoặc 2 ảnh cạnh nhau */}
+                        <div className="flex items-center gap-1 mb-2 mx-auto rounded-lg p-1" style={{ background: C.panel2, border: `1px solid ${C.line}`, width: "fit-content" }}>
+                          {[{ id: "slider", label: "Thanh trượt" }, { id: "side", label: "2 ảnh" }].map((m) => {
+                            const on = compareMode === m.id;
+                            return (
+                              <button key={m.id} type="button" onClick={() => setCompareMode(m.id)}
+                                className="text-[11px] font-semibold rounded-md px-3 py-1 transition-colors"
+                                style={{ background: on ? C.accent : "transparent", color: on ? C.onAccent : C.textDim, cursor: "pointer" }}>
+                                {m.label}
+                              </button>
+                            );
+                          })}
                         </div>
-                        <p className="text-[11px] mt-1.5 text-center" style={{ color: C.textFaint }}>Kéo thanh để so sánh ảnh gốc với ảnh AI</p>
+
+                        {compareMode === "slider" ? (
+                          <>
+                            {/* Trước/Sau (B1): kéo thanh chia để so sánh ảnh gốc MODEL (trái) với ảnh AI (phải) */}
+                            <div
+                              ref={compareRef}
+                              className="relative rounded-xl overflow-hidden select-none ipa-result-frame"
+                              style={{ background: C.bg, touchAction: "none", cursor: "ew-resize", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+                              onPointerDown={(e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} compareDragRef.current = true; setComparePos(comparePosFromEvent(e)); }}
+                              onPointerMove={(e) => { if (compareDragRef.current) setComparePos(comparePosFromEvent(e)); }}
+                              onPointerUp={(e) => { try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} compareDragRef.current = false; }}
+                              onPointerCancel={() => { compareDragRef.current = false; }}
+                              onContextMenu={(e) => e.preventDefault()}
+                            >
+                              <img src={genImg} alt="Kết quả gpt-image-2" className="block w-full" draggable={false} style={{ WebkitTouchCallout: "none", pointerEvents: "none" }} />
+                              <img
+                                src={`data:${modelImg.mediaType};base64,${modelImg.data}`}
+                                alt="Ảnh gốc MODEL"
+                                draggable={false}
+                                className="absolute inset-0 w-full h-full object-contain"
+                                style={{ background: C.bg, clipPath: `inset(0 ${100 - comparePos}% 0 0)`, pointerEvents: "none" }}
+                              />
+                              <div className="absolute top-0 bottom-0" style={{ left: `${comparePos}%`, width: 0, pointerEvents: "none" }}>
+                                <div className="absolute top-0 bottom-0" style={{ left: -1, width: 2, background: "#fff", boxShadow: "0 0 0 1px rgba(0,0,0,0.35)" }} />
+                                <div className="absolute flex items-center justify-center" style={{ top: "50%", left: 0, transform: "translate(-50%,-50%)", width: 32, height: 32, borderRadius: 9999, background: "rgba(0,0,0,0.55)", border: "2px solid #fff", backdropFilter: "blur(2px)" }}>
+                                  <ChevronLeft className="w-3.5 h-3.5" style={{ color: "#fff", marginRight: -5 }} />
+                                  <ChevronRight className="w-3.5 h-3.5" style={{ color: "#fff", marginLeft: -5 }} />
+                                </div>
+                              </div>
+                              <span className="absolute top-2 left-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.accentSoft, pointerEvents: "none" }}>Gốc</span>
+                              <span className="absolute top-2 right-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.text, pointerEvents: "none" }}>AI tạo</span>
+                            </div>
+                            <p className="text-[11px] mt-1.5 text-center" style={{ color: C.textFaint }}>Kéo thanh để so sánh ảnh gốc với ảnh AI</p>
+                          </>
+                        ) : (() => {
+                          // 2 ảnh cạnh nhau: nguồn = ảnh gốc MODEL + render hiện tại + các render trong lịch sử.
+                          const cmpOptions = [
+                            ...(modelImg ? [{ id: "model", label: "Gốc (MODEL)", src: `data:${modelImg.mediaType};base64,${modelImg.data}` }] : []),
+                            ...(genImg ? [{ id: "current", label: "Render hiện tại", src: genImg }] : []),
+                            ...history.filter((h) => h.genImg && h.genImg !== genImg).map((h, i) => ({ id: h.id, label: `Lịch sử ${i + 1}`, src: h.genImg })),
+                          ];
+                          const pickOf = (id) => cmpOptions.find((o) => o.id === id) || cmpOptions[0] || null;
+                          const panes = [
+                            { key: "L", sel: cmpLeftId, set: setCmpLeftId },
+                            { key: "R", sel: cmpRightId, set: setCmpRightId },
+                          ];
+                          return (
+                            <div className="grid grid-cols-2 gap-2">
+                              {panes.map((pane) => {
+                                const pick = pickOf(pane.sel);
+                                return (
+                                  <div key={pane.key} className="flex flex-col gap-1.5 min-w-0">
+                                    <select value={pick ? pick.id : ""} onChange={(e) => pane.set(e.target.value)}
+                                      className="text-[11px] rounded-md px-2 py-1 outline-none"
+                                      style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text }}>
+                                      {cmpOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                                    </select>
+                                    <div className="relative rounded-xl overflow-hidden flex items-center justify-center" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
+                                      {pick ? (
+                                        <img src={pick.src} alt={pick.label} draggable={false} onContextMenu={(e) => e.preventDefault()} className="block w-full max-h-[68vh] object-contain select-none" style={{ pointerEvents: "none" }} />
+                                      ) : (
+                                        <span className="text-xs" style={{ color: C.textDim }}>—</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
