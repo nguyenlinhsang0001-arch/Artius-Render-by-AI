@@ -3588,9 +3588,20 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   })}
                 </div>
 
-                {/* Banner: ảnh render lớn của mức đang chọn (public/intensity/lv0..3.webp). */}
+                {/* Banner: ảnh render mức đang chọn. Render SẴN cả 4 ảnh (tải 1 lần),
+                    chỉ đổi opacity -> chuyển tức thì, không nháy/đợi tải lại. */}
                 <div className="relative mt-3 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}`, aspectRatio: "4 / 3" }}>
-                  <img src={`/intensity/lv${styleIntensity}.webp`} alt={`Minh họa mức ${STYLE_INTENSITY_LEVELS[styleIntensity]?.label}`} className="w-full h-full" style={{ objectFit: "cover" }} />
+                  {STYLE_INTENSITY_LEVELS.map((lv) => (
+                    <img
+                      key={lv.value}
+                      src={`/intensity/lv${lv.value}.webp`}
+                      alt={`Minh họa mức ${lv.label}`}
+                      loading="eager"
+                      decoding="async"
+                      className="absolute inset-0 w-full h-full"
+                      style={{ objectFit: "cover", opacity: styleIntensity === lv.value ? 1 : 0, transition: "opacity 180ms ease" }}
+                    />
+                  ))}
                 </div>
 
                 <p className="mt-3 text-xs leading-relaxed" style={{ color: C.textDim }}>
