@@ -2989,6 +2989,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         /* Dải nhóm style: nắm-kéo ngang, ẩn hẳn thanh cuộn */
         .ipa-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .ipa-noscrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        /* Con trỏ nhóm style: nút = chọn (pointer); nền dải = nắm (grab); đang kéo = grabbing */
+        .ipa-catstrip { cursor: grab; }
+        .ipa-catstrip [data-cat] { cursor: pointer; }
+        .ipa-catstrip.ipa-catdrag, .ipa-catstrip.ipa-catdrag [data-cat] { cursor: grabbing !important; }
         /* Nav rail: nền accent sáng nhẹ (flush) khi rê chuột vào */
         .ipa-navbtn { border-radius: 12px; transition: background .18s ease, transform .15s ease, opacity .18s ease; }
         .ipa-navbtn:not(:disabled):hover { background: ${C.accent}1f; opacity: 1 !important; }
@@ -3306,24 +3310,22 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               {/* Tabs danh mục — nắm-kéo ngang để xem nhóm bị ẩn (không cần thanh cuộn) */}
               <div
                 ref={catScrollRef}
-                className="flex gap-1.5 overflow-x-auto ipa-scroll ipa-noscrollbar pb-1.5 mb-2"
-                style={{ cursor: "grab", touchAction: "pan-y", scrollBehavior: "auto" }}
+                className="ipa-catstrip flex gap-1.5 overflow-x-auto ipa-scroll ipa-noscrollbar pb-1.5 mb-2"
+                style={{ touchAction: "pan-y", scrollBehavior: "auto" }}
                 onPointerDown={(e) => {
                   const el = catScrollRef.current; if (!el) return;
                   catDrag.current = { down: true, moved: false, startX: e.clientX, startLeft: el.scrollLeft };
                   try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-                  el.style.cursor = "grabbing";
                 }}
                 onPointerMove={(e) => {
                   const el = catScrollRef.current; const d = catDrag.current; if (!el || !d.down) return;
                   const dx = e.clientX - d.startX;
-                  if (Math.abs(dx) > 4) d.moved = true;
-                  el.scrollLeft = d.startLeft - dx;
+                  if (Math.abs(dx) > 4 && !d.moved) { d.moved = true; el.classList.add("ipa-catdrag"); }
+                  if (d.moved) el.scrollLeft = d.startLeft - dx;
                 }}
                 onPointerUp={(e) => {
-                  const el = catScrollRef.current; if (el) el.style.cursor = "grab";
+                  const el = catScrollRef.current; if (el) el.classList.remove("ipa-catdrag");
                   try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {}
-                  // Chỉ coi là "chọn" khi không kéo (pointer capture nuốt click của nút con).
                   if (catDrag.current.down && !catDrag.current.moved && !styleImg) {
                     const node = document.elementFromPoint(e.clientX, e.clientY);
                     const btn = node && node.closest ? node.closest("[data-cat]") : null;
@@ -3331,7 +3333,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   }
                   catDrag.current.down = false;
                 }}
-                onPointerCancel={() => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; catDrag.current.down = false; }}
+                onPointerCancel={() => { const el = catScrollRef.current; if (el) el.classList.remove("ipa-catdrag"); catDrag.current.down = false; }}
               >
                 {[{ id: "", label: "Tất cả" }, ...Array.from(new Set(STYLE_PRESETS.map((pp) => pp.group))).map((g) => ({ id: g, label: g }))].map((cat) => {
                   const onc = presetCat === cat.id;
@@ -3341,7 +3343,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                       data-cat={cat.id}
                       disabled={!!styleImg}
                       className="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors whitespace-nowrap"
-                      style={{ ...(onc ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : "inherit" }}
+                      style={{ ...(onc ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : undefined }}
                     >
                       {cat.label}
                     </button>
