@@ -1945,7 +1945,11 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         return;
       }
       if (!response.ok) {
-        setGenError(`Lỗi tạo ảnh (HTTP ${response.status}). ${raw.slice(0, 300)}`);
+        // Hết hạn mức billing (OpenAI) -> câu ngắn gọn, thân thiện.
+        const friendly = /billing_hard_limit_reached|billing hard limit|insufficient_quota|exceeded your current quota/i.test(raw)
+          ? "Hết token để tạo ảnh"
+          : `Lỗi tạo ảnh (HTTP ${response.status}). ${raw.slice(0, 300)}`;
+        setGenError(friendly);
         setGenStatus("error");
         return;
       }
@@ -3310,6 +3314,33 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   );
                 })}
               </div>
+
+              {/* Dải "Đang dùng" — chip preset đang chọn (Chính/Phụ khi Trộn); × để bỏ */}
+              {!styleImg && (stylePreset || (blendMode && styleB)) && (
+                <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider shrink-0" style={{ color: C.textFaint }}>Đang dùng:</span>
+                  {stylePreset && (
+                    <span className="inline-flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 text-[11px] font-semibold" style={{ background: C.accent, color: C.onAccent }}>
+                      {blendMode && <span className="text-[8px] font-bold uppercase opacity-80">Chính</span>}
+                      {presetName(stylePreset)}
+                      <button type="button" onClick={() => changeStylePreset(null)} title="Bỏ chọn" aria-label={`Bỏ ${presetName(stylePreset)}`}
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full" style={{ background: "rgba(0,0,0,0.18)", cursor: "pointer" }}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {blendMode && styleB && (
+                    <span className="inline-flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 text-[11px] font-semibold" style={{ background: C.accentSoft, color: C.onAccent }}>
+                      <span className="text-[8px] font-bold uppercase opacity-80">Phụ</span>
+                      {presetName(styleB)}
+                      <button type="button" onClick={() => changeStyleB(null)} title="Bỏ chọn" aria-label={`Bỏ ${presetName(styleB)}`}
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full" style={{ background: "rgba(0,0,0,0.18)", cursor: "pointer" }}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Hint bar — mô tả preset đang hover/chọn. ĐÃ ẨN theo yêu cầu (đổi false -> true để bật lại). */}
               {false && !styleImg && (() => {
