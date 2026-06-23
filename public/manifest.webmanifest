@@ -1,7 +1,7 @@
 {
   "name": "Artius — Interior Render Agent",
   "short_name": "Artius",
-  "description": "Trợ lý tạo render nội thất bằng AI.",
+  "description": "Render nội thất bằng AI",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
