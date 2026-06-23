@@ -3320,7 +3320,17 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   if (Math.abs(dx) > 4) d.moved = true;
                   el.scrollLeft = d.startLeft - dx;
                 }}
-                onPointerUp={(e) => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {} catDrag.current.down = false; }}
+                onPointerUp={(e) => {
+                  const el = catScrollRef.current; if (el) el.style.cursor = "grab";
+                  try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {}
+                  // Chỉ coi là "chọn" khi không kéo (pointer capture nuốt click của nút con).
+                  if (catDrag.current.down && !catDrag.current.moved && !styleImg) {
+                    const node = document.elementFromPoint(e.clientX, e.clientY);
+                    const btn = node && node.closest ? node.closest("[data-cat]") : null;
+                    if (btn) setPresetCat(btn.getAttribute("data-cat") || "");
+                  }
+                  catDrag.current.down = false;
+                }}
                 onPointerCancel={() => { const el = catScrollRef.current; if (el) el.style.cursor = "grab"; catDrag.current.down = false; }}
               >
                 {[{ id: "", label: "Tất cả" }, ...Array.from(new Set(STYLE_PRESETS.map((pp) => pp.group))).map((g) => ({ id: g, label: g }))].map((cat) => {
@@ -3328,7 +3338,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                   return (
                     <button
                       key={cat.id || "all"}
-                      onClick={() => { if (catDrag.current.moved) return; setPresetCat(cat.id); }}
+                      data-cat={cat.id}
                       disabled={!!styleImg}
                       className="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors whitespace-nowrap"
                       style={{ ...(onc ? activeBtn : idleBtn), cursor: styleImg ? "not-allowed" : "inherit" }}
