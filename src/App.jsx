@@ -3787,7 +3787,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 {modelImg ? (
                   <>
                     <div className="w-full flex items-center justify-center overflow-hidden md:flex-1 md:min-h-0">
-                      <img src={`data:${modelImg.mediaType};base64,${modelImg.data}`} alt="Ảnh MODEL" draggable={false} onContextMenu={(e) => e.preventDefault()} className="w-full max-h-[78vh] object-contain rounded-2xl select-none md:w-auto md:max-w-full md:max-h-full" style={{ border: `1px solid ${C.line}`, WebkitTouchCallout: "none", pointerEvents: "none" }} />
+                      <img src={`data:${modelImg.mediaType};base64,${modelImg.data}`} alt="Ảnh MODEL" draggable={false} onContextMenu={(e) => e.preventDefault()} className="w-full max-h-[78vh] object-contain rounded-2xl select-none md:w-auto md:max-w-full md:max-h-[80vh]" style={{ border: `1px solid ${C.line}`, WebkitTouchCallout: "none", pointerEvents: "none" }} />
                     </div>
                     {!prompts && <p className="text-sm mt-4 md:shrink-0" style={{ color: C.textDim }}>Ảnh MODEL đã sẵn sàng — bấm <span style={{ color: C.accentSoft, fontWeight: 600 }}>“Phân tích &amp; Tạo prompt”</span> để bắt đầu.</p>}
                   </>
