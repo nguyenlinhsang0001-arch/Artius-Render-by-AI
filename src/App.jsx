@@ -1083,6 +1083,7 @@ export default function InteriorPromptAgent() {
   // Trước/Sau (B1): vị trí thanh chia 0..100 (% từ trái). Bên TRÁI = ảnh gốc MODEL, bên PHẢI = ảnh AI.
   const [comparePos, setComparePos] = useState(50);
   const compareRef = useRef(null);
+  const sliderZoom = useCtrlZoom();
   const compareDragRef = useRef(false);
   const comparePosFromEvent = (e) => {
     const el = compareRef.current;
@@ -2549,15 +2550,22 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             disabled={locked}
             onClick={locked ? undefined : () => setNavSection(key)}
             title={locked ? `${label} — chưa có dữ liệu` : label}
-            className="ipa-navbtn relative w-full flex flex-col items-center justify-center gap-1 py-1.5"
-            style={{ color: active ? C.accent : C.railIcon, cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.4 : (active ? 1 : 0.85) }}
+            className={`ipa-navbtn relative w-full flex flex-col items-center justify-center gap-1.5 py-1.5${active ? " ipa-navbtn-active" : ""}`}
+            style={{ color: active ? C.onAccent : C.railIcon, cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.4 : 1 }}
           >
-            <span aria-hidden="true" style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 3, height: 22, borderRadius: 3, background: active ? C.accent : "transparent" }} />
-            <span className="relative flex items-center justify-center rounded-xl" style={{ width: 38, height: 38, background: active ? `${C.accent}1a` : "transparent", border: active ? `1px solid ${C.accent}40` : "1px solid transparent" }}>
-              <Icon className="w-5 h-5" aria-hidden="true" />
+            <span aria-hidden="true" style={{ position: "absolute", left: 0, top: 27, transform: "translateY(-50%)", width: 3.5, height: active ? 30 : 0, borderRadius: 999, background: C.accent, boxShadow: active ? `0 0 10px ${C.accent}` : "none", transition: "height .2s ease" }} />
+            <span className="relative flex items-center justify-center" style={{
+              width: 42, height: 42, borderRadius: 13,
+              background: active ? `linear-gradient(150deg, ${C.accentSoft}, ${C.accent})` : `${C.railIcon}14`,
+              border: active ? `1px solid ${C.accentSoft}` : `1px solid ${C.line}`,
+              boxShadow: active ? `0 6px 16px -4px ${C.accent}aa, inset 0 1px 0 rgba(255,255,255,0.25)` : "none",
+              transform: active ? "translateY(-1px)" : "none",
+              transition: "background .2s ease, box-shadow .2s ease, transform .2s ease, border-color .2s ease",
+            }}>
+              <Icon className="w-5 h-5" aria-hidden="true" style={{ filter: active ? "drop-shadow(0 1px 1px rgba(0,0,0,0.35))" : "none" }} />
               {locked && <Lock className="w-2.5 h-2.5 absolute -top-0.5 -right-0.5" style={{ color: C.textFaint }} aria-hidden="true" />}
             </span>
-            <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: "0.03em", lineHeight: 1, whiteSpace: "nowrap" }}>{label}</span>
+            <span style={{ fontSize: 8.5, fontWeight: active ? 800 : 700, letterSpacing: "0.03em", lineHeight: 1, whiteSpace: "nowrap", color: active ? C.accentSoft : C.railIcon }}>{label}</span>
           </button>
         );
       })}
@@ -2994,29 +3002,34 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-catstrip [data-cat] { cursor: pointer; }
         .ipa-catstrip.ipa-catdrag, .ipa-catstrip.ipa-catdrag [data-cat] { cursor: grabbing !important; }
         /* Nav rail: nền accent sáng nhẹ (flush) khi rê chuột vào */
-        .ipa-navbtn { border-radius: 12px; transition: background .18s ease, transform .15s ease, opacity .18s ease; }
-        .ipa-navbtn:not(:disabled):hover { background: ${C.accent}1f; opacity: 1 !important; }
+        .ipa-navbtn { border-radius: 12px; transition: transform .15s ease, opacity .18s ease; }
+        .ipa-navbtn:not(:disabled):not(.ipa-navbtn-active):hover > span:nth-of-type(2) { background: ${C.accent}26 !important; border-color: ${C.accent}66 !important; transform: translateY(-1px); color: ${C.text}; }
+        .ipa-navbtn:not(:disabled):not(.ipa-navbtn-active):hover { opacity: 1 !important; }
         .ipa-navbtn:not(:disabled):active { transform: scale(0.95); }
         @keyframes ipa-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         .ipa-skel { background: linear-gradient(90deg, ${C.panel2} 25%, ${C.line} 37%, ${C.panel2} 63%); background-size: 200% 100%; animation: ipa-shimmer 1.4s ease-in-out infinite; }
         textarea, input, button { font-family: inherit; }
         *:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
         /* === Layout 2 cột desktop — CSS thuần, không phụ thuộc Tailwind JIT === */
+        @property --ipa-lw { syntax: '<length>'; inherits: false; initial-value: 396px; }
         .ipa-grid { margin-top: 1rem; }
         .ipa-col-left, .ipa-col-right { min-width: 0; }
         @media (min-width: 768px) {
           /* App shell cao cố định: trang KHÔNG cuộn — chỉ các cột cuộn nội bộ (Việc 1+2) */
           .ipa-shell { height: 100dvh; overflow: hidden; }
           .ipa-grid {
-            display: grid; grid-template-columns: 396px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0.5rem;
+            --ipa-lw: 396px;
+            display: grid; grid-template-columns: var(--ipa-lw) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0.5rem;
             align-items: stretch; margin-top: 0; flex: 1 1 auto; min-height: 0;
+            transition: --ipa-lw .4s cubic-bezier(0.22, 1, 0.36, 1), gap .4s cubic-bezier(0.22, 1, 0.36, 1);
           }
-          .ipa-col-left  { display: flex !important; flex-direction: column; min-height: 0; }
+          .ipa-col-left  { display: flex !important; flex-direction: column; min-height: 0; overflow: hidden; transition: opacity .3s ease; }
           .ipa-col-right { display: flex !important; flex-direction: column; min-height: 0;
-            padding-left: 1rem; border-left: 1px solid ${C.line}; }
-          /* Thu gọn cột Accent: dùng lưới MỘT cột (ẩn cột trái) — tránh cột phải bị dồn vào track 0 */
-          .ipa-grid.ipa-collapsed { grid-template-columns: minmax(0, 1fr); }
-          .ipa-grid.ipa-collapsed .ipa-col-left { display: none !important; }
+            padding-left: 1rem; border-left: 1px solid ${C.line};
+            transition: padding-left .4s cubic-bezier(0.22, 1, 0.36, 1); }
+          /* Thu gọn cột Accent: bóp track trái về 0 + mờ dần nội dung -> mượt, không tắt phụt */
+          .ipa-grid.ipa-collapsed { --ipa-lw: 0px; gap: 0; }
+          .ipa-grid.ipa-collapsed .ipa-col-left { opacity: 0; pointer-events: none; }
           .ipa-grid.ipa-collapsed .ipa-col-right { padding-left: 0; border-left: none; }
           /* thân cuộn cột trái (controls) — vùng cuộn duy nhất của panel Accent */
           .ipa-pane-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-left: 4px; padding-right: 4px; }
@@ -3882,7 +3895,14 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 {modelImg ? (
                   <>
                     <div className="w-full flex items-center justify-center overflow-hidden md:flex-1 md:min-h-0">
-                      <img src={`data:${modelImg.mediaType};base64,${modelImg.data}`} alt="Ảnh MODEL" draggable={false} onContextMenu={(e) => e.preventDefault()} className="w-full max-h-[78vh] object-contain rounded-2xl select-none md:w-auto md:max-w-full md:max-h-full" style={{ border: `1px solid ${C.line}`, WebkitTouchCallout: "none", pointerEvents: "none" }} />
+                      <ZoomImg
+                        src={`data:${modelImg.mediaType};base64,${modelImg.data}`}
+                        alt="Ảnh MODEL"
+                        frameClassName="w-full flex items-center justify-center md:w-auto md:max-w-full md:max-h-full rounded-2xl"
+                        frameStyle={{ border: `1px solid ${C.line}`, maxHeight: "78vh" }}
+                        imgClassName="w-full max-h-[78vh] object-contain rounded-2xl select-none md:w-auto md:max-w-full md:max-h-full"
+                        imgStyle={{ WebkitTouchCallout: "none" }}
+                      />
                     </div>
                   </>
                 ) : (
@@ -4039,8 +4059,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                           <>
                             {/* Trước/Sau (B1): kéo thanh chia để so sánh ảnh gốc MODEL (trái) với ảnh AI (phải) */}
                             <div
-                              ref={compareRef}
+                              ref={(el) => { compareRef.current = el; sliderZoom.ref.current = el; }}
                               className="relative rounded-xl overflow-hidden select-none ipa-result-frame"
+                              title="Giữ Ctrl + lăn chuột để phóng to / thu nhỏ"
                               style={{ background: C.bg, touchAction: "none", cursor: "ew-resize", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
                               onPointerDown={(e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} compareDragRef.current = true; setComparePos(comparePosFromEvent(e)); }}
                               onPointerMove={(e) => { if (compareDragRef.current) setComparePos(comparePosFromEvent(e)); }}
@@ -4048,13 +4069,13 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                               onPointerCancel={() => { compareDragRef.current = false; }}
                               onContextMenu={(e) => e.preventDefault()}
                             >
-                              <img src={genImg} alt="Kết quả gpt-image-2" className="block w-full" draggable={false} style={{ WebkitTouchCallout: "none", pointerEvents: "none" }} />
+                              <img src={genImg} alt="Kết quả gpt-image-2" className="block w-full" draggable={false} style={{ transform: sliderZoom.transform, transformOrigin: "center center", transition: "transform 90ms ease-out", WebkitTouchCallout: "none", pointerEvents: "none" }} />
                               <img
                                 src={`data:${modelImg.mediaType};base64,${modelImg.data}`}
                                 alt="Ảnh gốc MODEL"
                                 draggable={false}
                                 className="absolute inset-0 w-full h-full object-contain"
-                                style={{ background: C.bg, clipPath: `inset(0 ${100 - comparePos}% 0 0)`, pointerEvents: "none" }}
+                                style={{ background: C.bg, clipPath: `inset(0 ${100 - comparePos}% 0 0)`, transform: sliderZoom.transform, transformOrigin: "center center", transition: "transform 90ms ease-out", pointerEvents: "none" }}
                               />
                               <div className="absolute top-0 bottom-0" style={{ left: `${comparePos}%`, width: 0, pointerEvents: "none" }}>
                                 <div className="absolute top-0 bottom-0" style={{ left: -1, width: 2, background: "#fff", boxShadow: "0 0 0 1px rgba(0,0,0,0.35)" }} />
@@ -4065,6 +4086,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                               </div>
                               <span className="absolute top-2 left-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.accentSoft, pointerEvents: "none" }}>Gốc</span>
                               <span className="absolute top-2 right-2 text-[11px] font-semibold rounded px-2 py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: C.text, pointerEvents: "none" }}>AI tạo</span>
+                              <ZoomBadge zoom={sliderZoom.zoom} onReset={sliderZoom.reset} />
                             </div>
                             <p className="text-[11px] mt-1.5 text-center" style={{ color: C.textFaint }}>Kéo thanh để so sánh ảnh gốc với ảnh AI</p>
                           </>
@@ -4093,7 +4115,13 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                                     </select>
                                     <div className="relative rounded-xl overflow-hidden flex items-center justify-center" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
                                       {pick ? (
-                                        <img src={pick.src} alt={pick.label} draggable={false} onContextMenu={(e) => e.preventDefault()} className="block w-full max-h-[68vh] object-contain select-none" style={{ pointerEvents: "none" }} />
+                                        <ZoomImg
+                                          src={pick.src}
+                                          alt={pick.label}
+                                          frameClassName="w-full flex items-center justify-center"
+                                          frameStyle={{ maxHeight: "68vh" }}
+                                          imgClassName="block w-full max-h-[68vh] object-contain select-none"
+                                        />
                                       ) : (
                                         <span className="text-xs" style={{ color: C.textDim }}>—</span>
                                       )}
