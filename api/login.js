@@ -66,7 +66,7 @@ async function recordLogin(username, ip) {
 // ---- IP limit: tối đa 2 IP / account, TTL 12h. Atomic qua Redis EVAL (ZSET).
 //      Key ipset:<user>: member=IP, score=last_seen(epoch s). Fail-open nếu Redis
 //      chưa cấu hình / lỗi (nhất quán với cách app im lặng khi Redis lỗi).
-const IP_TTL = 12 * 3600, IP_LIMIT = 2;
+const IP_TTL = 24 * 3600, IP_LIMIT = 2;
 const IP_LUA =
   "local k=KEYS[1] local now=tonumber(ARGV[1]) local ttl=tonumber(ARGV[2]) " +
   "local lim=tonumber(ARGV[3]) local ip=ARGV[4] " +
