@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { createRoot } from "react-dom/client";
 import { Loader2, Copy, Check, Image as ImageIcon, Sparkles, AlertCircle, Palette, Box, Lock, Pencil, Move3d, Droplet, Layers, Maximize2, Ban, X, RefreshCw, Home, History, ChevronDown, ChevronLeft, ChevronRight, Shuffle, RotateCcw, Download, ZoomIn, Building2, Eye, EyeOff, Search, LayoutGrid, List } from "lucide-react";
 
 
@@ -4350,4 +4349,4 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 }
 
 
-createRoot(document.getElementById("root")).render(React.createElement(InteriorPromptAgent));
+export default InteriorPromptAgent;
