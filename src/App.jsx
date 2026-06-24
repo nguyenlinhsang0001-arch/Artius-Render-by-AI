@@ -1,6 +1,102 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Loader2, Copy, Check, Image as ImageIcon, Sparkles, AlertCircle, Palette, Box, Lock, Pencil, Move3d, Droplet, Layers, Maximize2, Ban, X, RefreshCw, Home, History, ChevronDown, ChevronLeft, ChevronRight, Shuffle, RotateCcw, Download, ZoomIn, Building2, Eye, EyeOff, Search, LayoutGrid, List } from "lucide-react";
 
+// =============================================================
+// ZOOM ẢNH — Giữ Ctrl (hoặc ⌘) + lăn chuột khi rê chuột trên ảnh để phóng
+// to / thu nhỏ ngay tại vị trí con trỏ. Khi đã phóng to: kéo để di chuyển
+// (pan), double-click hoặc bấm nút % để đưa về 100%. Dùng listener wheel
+// non-passive để chặn zoom mặc định của trình duyệt.
+// =============================================================
+function useCtrlZoom() {
+  const ref = useRef(null);
+  const st = useRef({ z: 1, x: 0, y: 0 });
+  const drag = useRef(null);
+  const [, force] = useState(0);
+  const rerender = () => force((n) => n + 1);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return; // chỉ zoom khi giữ Ctrl/⌘
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const cx = e.clientX - r.left - r.width / 2;
+      const cy = e.clientY - r.top - r.height / 2;
+      const s = st.current;
+      const nz = Math.min(8, Math.max(1, s.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+      const ratio = nz / s.z;
+      if (nz === 1) { s.z = 1; s.x = 0; s.y = 0; }
+      else { s.x = cx - (cx - s.x) * ratio; s.y = cy - (cy - s.y) * ratio; s.z = nz; }
+      rerender();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const s = st.current;
+  const reset = () => { s.z = 1; s.x = 0; s.y = 0; rerender(); };
+  const onPointerDown = (e) => {
+    if (s.z <= 1) return;
+    drag.current = { px: e.clientX, py: e.clientY, ox: s.x, oy: s.y };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+  };
+  const onPointerMove = (e) => {
+    if (!drag.current) return;
+    s.x = drag.current.ox + (e.clientX - drag.current.px);
+    s.y = drag.current.oy + (e.clientY - drag.current.py);
+    rerender();
+  };
+  const onPointerUp = (e) => { drag.current = null; try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} };
+
+  return {
+    ref, zoom: s.z, reset,
+    dragging: !!drag.current,
+    transform: `translate(${s.x}px, ${s.y}px) scale(${s.z})`,
+    panHandlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onDoubleClick: reset },
+  };
+}
+
+// Nút badge hiện mức zoom + bấm để về 100%. Chỉ hiện khi đã phóng to.
+function ZoomBadge({ zoom, onReset }) {
+  if (zoom <= 1.001) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onReset(); }}
+      title="Về 100%"
+      className="absolute z-20 inline-flex items-center gap-1 text-[11px] font-semibold rounded-md px-2 py-0.5"
+      style={{ bottom: 8, right: 8, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer", backdropFilter: "blur(2px)" }}
+    >
+      {Math.round(zoom * 100)}% · 1:1
+    </button>
+  );
+}
+
+// Ảnh có thể phóng to bằng Ctrl + lăn chuột; kéo để di chuyển khi đã zoom.
+function ZoomImg({ src, alt, imgClassName, imgStyle, frameClassName, frameStyle }) {
+  const z = useCtrlZoom();
+  return (
+    <div
+      ref={z.ref}
+      className={frameClassName}
+      style={{ position: "relative", overflow: "hidden", touchAction: "none", cursor: z.zoom > 1 ? (z.dragging ? "grabbing" : "grab") : "default", ...frameStyle }}
+      title="Giữ Ctrl + lăn chuột để phóng to / thu nhỏ"
+      onContextMenu={(e) => e.preventDefault()}
+      {...z.panHandlers}
+    >
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        className={imgClassName}
+        style={{ transform: z.transform, transformOrigin: "center center", transition: z.dragging ? "none" : "transform 90ms ease-out", pointerEvents: "none", ...imgStyle }}
+      />
+      <ZoomBadge zoom={z.zoom} onReset={z.reset} />
+    </div>
+  );
+}
+
 const PLATFORMS = [
   { id: "nanobanana", label: "gpt-image 2", hint: "" },
 ];
