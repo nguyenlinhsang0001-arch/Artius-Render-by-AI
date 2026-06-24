@@ -4215,8 +4215,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                                           src={pick.src}
                                           alt={pick.label}
                                           frameClassName="w-full flex items-center justify-center"
-                                          frameStyle={{ maxHeight: "68vh" }}
-                                          imgClassName="block w-full max-h-[68vh] object-contain select-none"
+                                          frameStyle={{ maxHeight: "full" }}
+                                          imgClassName="block w-full max-h-[full] object-contain select-none"
                                         />
                                       ) : (
                                         <span className="text-xs" style={{ color: C.textDim }}>—</span>
