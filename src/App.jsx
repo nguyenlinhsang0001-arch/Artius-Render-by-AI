@@ -14,6 +14,23 @@ function useCtrlZoom() {
   const [, force] = useState(0);
   const rerender = () => force((n) => n + 1);
 
+  // Kẹp pan trong lòng ảnh: với mức zoom z, ảnh (kích thước layout iw×ih) chỉ
+  // được dịch tối đa (iw*z - fw)/2 mỗi phía để mép ảnh không lùi vào trong khung
+  // (không lộ vùng nền ngoài ảnh). Nếu ảnh scale còn nhỏ hơn khung -> khoá về 0.
+  const clampPan = () => {
+    const el = ref.current;
+    if (!el) return;
+    const img = el.querySelector("img");
+    const fw = el.clientWidth, fh = el.clientHeight;
+    const iw = img ? img.offsetWidth : fw;
+    const ih = img ? img.offsetHeight : fh;
+    const z = st.current.z;
+    const maxX = Math.max(0, (iw * z - fw) / 2);
+    const maxY = Math.max(0, (ih * z - fh) / 2);
+    st.current.x = Math.max(-maxX, Math.min(maxX, st.current.x));
+    st.current.y = Math.max(-maxY, Math.min(maxY, st.current.y));
+  };
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -27,7 +44,7 @@ function useCtrlZoom() {
       const nz = Math.min(8, Math.max(1, s.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
       const ratio = nz / s.z;
       if (nz === 1) { s.z = 1; s.x = 0; s.y = 0; }
-      else { s.x = cx - (cx - s.x) * ratio; s.y = cy - (cy - s.y) * ratio; s.z = nz; }
+      else { s.x = cx - (cx - s.x) * ratio; s.y = cy - (cy - s.y) * ratio; s.z = nz; clampPan(); }
       rerender();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -47,6 +64,7 @@ function useCtrlZoom() {
     const move = (ev) => {
       st.current.x = start.ox + (ev.clientX - start.px);
       st.current.y = start.oy + (ev.clientY - start.py);
+      clampPan();
       rerender();
     };
     const up = () => {
@@ -3118,9 +3136,11 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-skel { background: linear-gradient(90deg, ${C.panel2} 25%, ${C.line} 37%, ${C.panel2} 63%); background-size: 200% 100%; animation: ipa-shimmer 1.4s ease-in-out infinite; }
         textarea, input, button { font-family: inherit; }
         *:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
-        /* Ảnh trong khung fit: LUÔN giữ đúng tỉ lệ khung — cao co lại thì ngang co theo
-           (width/height auto + object-contain), khung ôm sát ảnh, không méo, không cắt. */
-        .ipa-fit-frame > img { width: auto !important; height: auto !important; max-width: 100% !important; object-fit: contain; }
+        /* Ảnh trong khung fit: LUÔN giữ đúng tỉ lệ khung — cao co lại thì ngang co theo.
+           Khung ôm SÁT ảnh (width:fit-content) nên không bị kéo giãn ngang full khung. */
+        .ipa-fit-frame { display: flex !important; align-items: center; justify-content: center;
+          width: fit-content !important; max-width: 100% !important; margin-left: auto; margin-right: auto; }
+        .ipa-fit-frame > img { display: block; width: auto !important; height: auto !important; max-width: 100% !important; object-fit: contain; }
         /* === Layout 2 cột desktop — CSS thuần, không phụ thuộc Tailwind JIT === */
         @property --ipa-lw { syntax: '<length>'; inherits: false; initial-value: 396px; }
         .ipa-grid { margin-top: 1rem; }
@@ -4231,7 +4251,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                                       style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text }}>
                                       {cmpOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                                     </select>
-                                    <div className="relative rounded-xl overflow-hidden flex items-center justify-center ipa-fit-frame" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
+                                    <div className="relative rounded-xl overflow-hidden flex items-center justify-center" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
                                       {pick ? (
                                         <ZoomImg
                                           src={pick.src}
