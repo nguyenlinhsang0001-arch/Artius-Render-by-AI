@@ -3142,6 +3142,13 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           .ipa-result-caption { flex: 0 0 auto; }
           /* placeholder đang tạo ảnh: fill vùng canvas (không dùng aspect-ratio gây tràn) */
           .ipa-gen-fill { flex: 1 1 auto; min-height: 0; width: 100%; aspect-ratio: auto !important; }
+          /* Ảnh MODEL / kết quả: fit TRỌN chiều cao canvas (override inline vh) -> không cắt trên/dưới ở màn hình thấp */
+          .ipa-fit-frame { max-height: 100% !important; }
+          .ipa-fit-frame > img { max-height: 100% !important; height: auto !important; width: auto !important; max-width: 100% !important; object-fit: contain; }
+          /* 2 ảnh cạnh nhau: lưới + ô chiếm hết chiều cao còn lại để mỗi ảnh fit thay vì tràn */
+          .ipa-cmp-grid { flex: 1 1 auto; min-height: 0; }
+          .ipa-cmp-grid > div { min-height: 0; }
+          .ipa-cmp-pane { flex: 1 1 auto; min-height: 0; }
         }
       `}</style>
 
@@ -3994,9 +4001,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                       <ZoomImg
                         src={`data:${modelImg.mediaType};base64,${modelImg.data}`}
                         alt="Ảnh MODEL"
-                        frameClassName="w-full flex items-center justify-center md:w-auto md:max-w-full md:max-h-full rounded-2xl"
-                        frameStyle={{ border: `1px solid ${C.line}`, maxHeight: "78vh" }}
-                        imgClassName="w-full max-h-[78vh] object-contain rounded-2xl select-none md:w-auto md:max-w-full md:max-h-full"
+                        frameClassName="ipa-fit-frame w-full flex items-center justify-center md:w-auto md:max-w-full md:max-h-full rounded-2xl"
+                        frameStyle={{ border: `1px solid ${C.line}`, maxHeight: "78dvh" }}
+                        imgClassName="w-full max-h-[78dvh] object-contain rounded-2xl select-none md:w-auto md:max-w-full md:max-h-full"
                         imgStyle={{ WebkitTouchCallout: "none" }}
                       />
                     </div>
@@ -4199,24 +4206,24 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                             { key: "R", sel: cmpRightId, set: setCmpRightId },
                           ];
                           return (
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-2 ipa-cmp-grid">
                               {panes.map((pane) => {
                                 const pick = pickOf(pane.sel);
                                 return (
-                                  <div key={pane.key} className="flex flex-col gap-1.5 min-w-0">
+                                  <div key={pane.key} className="flex flex-col gap-1.5 min-w-0 ipa-cmp-pane">
                                     <select value={pick ? pick.id : ""} onChange={(e) => pane.set(e.target.value)}
                                       className="text-[11px] rounded-md px-2 py-1 outline-none"
                                       style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text }}>
                                       {cmpOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                                     </select>
-                                    <div className="relative rounded-xl overflow-hidden flex items-center justify-center" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
+                                    <div className="relative rounded-xl overflow-hidden flex items-center justify-center ipa-fit-frame" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
                                       {pick ? (
                                         <ZoomImg
                                           src={pick.src}
                                           alt={pick.label}
-                                          frameClassName="w-full flex items-center justify-center"
-                                          frameStyle={{ maxHeight: "68vh" }}
-                                          imgClassName="block w-full max-h-[68vh] object-contain select-none"
+                                          frameClassName="ipa-fit-frame w-full flex items-center justify-center"
+                                          frameStyle={{ maxHeight: "68dvh" }}
+                                          imgClassName="block w-full max-h-[68dvh] object-contain select-none"
                                         />
                                       ) : (
                                         <span className="text-xs" style={{ color: C.textDim }}>—</span>
@@ -4329,7 +4336,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 src={STYLE_IMAGES[zoomStyle.id]}
                 alt={zoomStyle.label}
                 className="w-full rounded-xl"
-                style={{ maxHeight: "90vh", objectFit: "contain", border: `0px solid ${C.line}` }}
+                style={{ maxHeight: "90dvh", objectFit: "contain", border: `0px solid ${C.line}` }}
               />
               <div className="mt-2 text-center text-sm font-regular" style={{ color: "#fff" }}>{zoomStyle.label}</div>
             </div>
