@@ -207,14 +207,14 @@ const AR_TO_SIZE = {
 // sáng của ảnh gốc, CHỈ đổi vị trí & hướng camera -> bộ ảnh đồng bộ phong cách.
 // =============================================================
 const MULTIVIEW_ANGLES = [
-  { id: "front",     label: "Chính diện",     desc: "a straight-on frontal eye-level view, camera facing the main wall head-on" },
-  { id: "threeq_l",  label: "Chéo trái 3/4",  desc: "a three-quarter view from the front-left corner, eye-level, showing two walls receding" },
-  { id: "threeq_r",  label: "Chéo phải 3/4",  desc: "a three-quarter view from the front-right corner, eye-level, showing two walls receding" },
-  { id: "wide",      label: "Toàn cảnh rộng", desc: "a wide establishing shot with a 18-24mm wide-angle lens capturing most of the room" },
-  { id: "low",       label: "Góc thấp",       desc: "a low-angle view with the camera near the floor looking slightly upward" },
-  { id: "high",      label: "Trên cao",       desc: "a high vantage / elevated corner view looking down into the space" },
-  { id: "detail",    label: "Cận cảnh",       desc: "a closer focal view on the main furniture grouping / focal feature of the room" },
-  { id: "reverse",   label: "Góc đối diện",   desc: "the reverse shot from the opposite end of the room, looking back toward the original camera position" },
+  { id: "front",     label: "Chính diện",     desc: "Place the camera centred in front of the same main focal wall, looking straight at it head-on at standing eye level (about 1.5 m high). Near-symmetrical one-point perspective, the focal wall fills the frame parallel to the image plane." },
+  { id: "threeq_l",  label: "Chéo trái 3/4",  desc: "Move the camera to the LEFT and turn it back toward the room's centre so the scene is seen at a 45-degree three-quarter angle from the FRONT-LEFT. The same main focal wall and the wall on the LEFT are BOTH visible and recede into a two-point perspective toward the right of the frame. Standing eye level." },
+  { id: "threeq_r",  label: "Chéo phải 3/4",  desc: "Move the camera to the RIGHT and turn it back toward the room's centre so the scene is seen at a 45-degree three-quarter angle from the FRONT-RIGHT (mirror of the left three-quarter). The same main focal wall and the wall on the RIGHT are BOTH visible and recede into a two-point perspective toward the left of the frame. Standing eye level." },
+  { id: "wide",      label: "Toàn cảnh rộng", desc: "Pull the camera back to the same head-on viewpoint but with a wider 18-24 mm lens so almost the entire room and all its furniture are visible at once, eye level, straight verticals (no fisheye)." },
+  { id: "low",       label: "Góc thấp",       desc: "Lower the camera to about 60 cm above the floor, still facing the same focal wall, tilted slightly upward so the ceiling becomes more prominent. The furniture layout is unchanged, only the camera height drops." },
+  { id: "high",      label: "Trên cao",       desc: "Raise the camera to an elevated corner near ceiling height looking gently down into the same room (high-angle / bird's-eye-ish), revealing the floor plan and furniture arrangement from above. Layout unchanged." },
+  { id: "detail",    label: "Cận cảnh",       desc: "Dolly the camera closer toward the main furniture grouping / focal feature for a tighter framing, keeping that furniture in its exact same position; a medium close shot of the same focal area, eye level." },
+  { id: "reverse",   label: "Góc đối diện",   desc: "Rotate the camera 180 degrees to stand at the opposite end of the SAME room and look back toward where the original camera stood, revealing the wall behind the original viewpoint while keeping every existing object in its same world position." },
 ];
 
 // Tách data URI ("data:image/png;base64,XXXX") -> { mediaType, data }.
@@ -740,7 +740,7 @@ const SERIF = "'Cormorant', 'Cormorant Garamond', Georgia, serif";
 // phụ thuộc file ngoài. Thay cho icon Sparkles ở header.
 const ARTIUS_LOGO = "data:image/png;base64,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";
 
-const APP_VERSION = "v39 · 25/06/2026";
+const APP_VERSION = "v39.2 · 25/06/2026";
 
 // =============================================================
 // API_URL — ĐIỂM GỌI API DUY NHẤT, đặt một chỗ để dễ đổi.
@@ -1242,10 +1242,14 @@ export default function InteriorPromptAgent() {
   const [cmpRightId, setCmpRightId] = useState("current"); // nguồn ảnh pane phải
 
   // ===== MULTIVIEW (đa góc nhìn) — tạo thêm nhiều góc máy từ ảnh AI đã render.
-  // multiViews: mỗi phần tử = { id, label, status, img, error }. mvBusy: đang
-  // chạy loạt. mvSel: tập id góc đang chọn để tạo. mvGalleryIdx: gallery độc lập.
+  // multiViews: batch ĐANG chạy { id, label, status, img, error } (chỉ để hiện
+  // tiến trình). mvAll: LỊCH SỬ tích lũy mọi ảnh đa góc đã tạo cho ảnh AI hiện
+  // tại { uid, id, label, img } — KHÔNG bị mất khi tạo batch mới. mvBusy: đang
+  // chạy loạt. mvSel: tập id góc đang chọn. mvGalleryIdx: gallery độc lập.
   const [multiViews, setMultiViews] = useState([]);
+  const [mvAll, setMvAll] = useState([]);
   const [mvBusy, setMvBusy] = useState(false);
+  const [mvRetrying, setMvRetrying] = useState(() => new Set()); // uid/khóa ô đang tạo lại
   const [mvSel, setMvSel] = useState(() => new Set(MULTIVIEW_ANGLES.slice(0, 4).map((a) => a.id)));
   // Trình xem đa góc ĐỘC LẬP (gallery) — chỉ số ảnh đang xem trong danh sách
   // ảnh đa góc đã xong; null = đóng. Tách hẳn khỏi viewer ảnh AI (genImg).
@@ -1370,9 +1374,11 @@ export default function InteriorPromptAgent() {
     setGenError(null);
     setImgDirty(false);
     setStatus("done");
-    // Khôi phục bộ ảnh đa góc của phiên bản này (nếu có) -> pane "Đa góc" hiện lại.
-    setMultiViews(Array.isArray(entry.multiView)
-      ? entry.multiView.map((m) => ({ id: m.id, label: m.label, status: "done", img: m.img, error: null }))
+    // Khôi phục LỊCH SỬ đa góc của phiên bản này (nếu có) -> pane "Đa góc" hiện lại.
+    setMultiViews([]);
+    setMvGalleryIdx(null);
+    setMvAll(Array.isArray(entry.multiView)
+      ? entry.multiView.map((m, i) => ({ uid: `mv-h${i}-${Date.now()}`, id: m.id, label: m.label, img: m.img }))
       : []);
   }
 
@@ -2001,6 +2007,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     setGenError(null);
     // Ảnh AI mới -> bộ đa góc cũ (của ảnh trước) không còn đúng, xóa đi.
     setMultiViews([]);
+    setMvAll([]);
     setMvGalleryIdx(null);
     setComparePos(50); // tạo ảnh mới -> đưa thanh so sánh về giữa
 
@@ -2077,13 +2084,19 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   // =============================================================
   function mvPromptFor(angleDesc) {
     return (
-      "Using the provided photorealistic interior image as the EXACT reference for the design, " +
-      "materials, colours, furniture, decor, finishes and lighting mood, re-render THE SAME room " +
-      "as a NEW photograph taken from a different camera viewpoint: " + angleDesc + ". " +
-      "Keep the identical interior design, the same materials, palette, furnishings, fixtures and " +
-      "lighting atmosphere — only the camera position and angle change, never the design itself. " +
-      "Maintain perfectly straight vertical lines and believable, undistorted perspective. " +
-      "Photorealistic, architectural visualization quality, consistent style with the reference, the same space."
+      "Treat the provided photorealistic interior image as ONE fixed, frozen 3D scene. Imagine a " +
+      "virtual camera orbiting around this UNCHANGED room; only the camera moves, nothing inside the " +
+      "room moves. " +
+      "CAMERA INSTRUCTION — reposition the camera as follows: " + angleDesc + " " +
+      "HARD CONSTRAINTS (must obey): keep EVERY element in its exact same world position, size, " +
+      "orientation, material and colour — the same walls, windows, doors, floor and ceiling, and the " +
+      "SAME furniture, rugs, lighting fixtures, artwork and decor, each in the identical spot it occupies " +
+      "in the reference. Do NOT move, add, remove, duplicate, resize, rearrange or restyle any object or " +
+      "any architectural feature; the floor plan and furniture layout are LOCKED. Only the camera's " +
+      "position, angle and framing change — this is novel-view synthesis of the same fixed room, NOT a " +
+      "redesign. Keep the identical lighting, time of day, colour grade and mood. Keep vertical lines " +
+      "perfectly straight and the perspective natural and undistorted (no fisheye). " +
+      "Photorealistic architectural visualization, perfectly consistent with the reference image."
     );
   }
 
@@ -2100,11 +2113,13 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     // Khởi tạo danh sách ô chờ (giữ thứ tự preset).
     setMultiViews(angles.map((a) => ({ id: a.id, label: a.label, status: "pending", img: null, error: null })));
 
-    // Gắn kết quả đa góc vào ĐÚNG entry lịch sử của ảnh AI nguồn (so khớp genImg),
-    // để xuất HTML có kèm. results = ảnh đã xong (tích lũy dần).
+    // Tích lũy vào LỊCH SỬ đa góc (mvAll) — seed từ những ảnh đã có để batch mới
+    // KHÔNG xóa batch cũ. Đồng thời gắn dồn vào ĐÚNG entry lịch sử của ảnh AI
+    // nguồn (so khớp genImg) để xuất HTML có kèm tất cả.
     const srcImg = genImg;
-    const results = [];
-    const attachToHistory = () => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: results.slice() } : e));
+    const acc = mvAll.slice();
+    let uidSeq = Date.now();
+    const attachToHistory = () => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: acc.map(({ uid, ...m }) => m) } : e));
 
     const size = AR_TO_SIZE[aspectRatio] || "auto";
     for (const a of angles) {
@@ -2139,7 +2154,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         }
         const uri = `data:image/png;base64,${b64}`;
         setMultiViews((prev) => prev.map((v) => v.id === a.id ? { ...v, status: "done", img: uri } : v));
-        results.push({ id: a.id, label: a.label, img: uri });
+        acc.push({ uid: `mv-${uidSeq++}`, id: a.id, label: a.label, img: uri });
+        setMvAll(acc.slice());
         attachToHistory();
         bumpCount("images");
       } catch (err) {
@@ -2149,6 +2165,62 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     }
     setMvBusy(false);
   }
+
+  // Tạo lại / tạo bù MỘT góc riêng lẻ. replaceUid != null -> thay ảnh của ô đó
+  // trong mvAll; nếu không -> thêm ảnh mới (dùng khi tạo lại từ ô lỗi).
+  async function generateOne(angle, replaceUid) {
+    if (!genImg || !angle) return;
+    const key = replaceUid || `new-${angle.id}`;
+    if (mvRetrying.has(key)) return;
+    setMvRetrying((s) => { const n = new Set(s); n.add(key); return n; });
+    const srcImg = genImg;
+    const syncHistory = (list) => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: list.map(({ uid, ...m }) => m) } : e));
+    try {
+      const base = await downscaleDataUri(srcImg, 1024, 0.85);
+      if (!base) throw new Error("no base");
+      const response = await fetch(IMAGE_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
+        body: JSON.stringify({
+          model: "gpt-image-2",
+          prompt: mvPromptFor(angle.desc),
+          images: [{ data: base.data, mediaType: base.mediaType }],
+          size: AR_TO_SIZE[aspectRatio] || "auto",
+          quality: "medium",
+          mode: "edit",
+        }),
+      });
+      let raw = ""; try { raw = await response.text(); } catch {}
+      if (response.status === 401) { logout(); return; }
+      if (!response.ok) {
+        const friendly = /billing_hard_limit_reached|insufficient_quota|exceeded your current quota/i.test(raw)
+          ? "Hết token tạo ảnh" : `Lỗi HTTP ${response.status}`;
+        setGenError(friendly); setTimeout(() => setGenError(null), 2500);
+        return;
+      }
+      let data = null; try { data = JSON.parse(raw); } catch {}
+      const b64 = data?.b64 || data?.data?.[0]?.b64_json || null;
+      if (!b64) { setGenError("Proxy không trả ảnh."); setTimeout(() => setGenError(null), 2500); return; }
+      const uri = `data:image/png;base64,${b64}`;
+      setMvAll((prev) => {
+        const next = (replaceUid && prev.some((v) => v.uid === replaceUid))
+          ? prev.map((v) => v.uid === replaceUid ? { ...v, img: uri } : v)
+          : [...prev, { uid: `mv-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, id: angle.id, label: angle.label, img: uri }];
+        syncHistory(next);
+        return next;
+      });
+      // Tạo bù từ ô lỗi -> bỏ ô lỗi tương ứng khỏi batch hiển thị.
+      if (!replaceUid) setMultiViews((prev) => prev.filter((v) => v.id !== angle.id));
+      bumpCount("images");
+    } catch (err) {
+      console.error(err);
+      setGenError("Lỗi kết nối khi tạo lại góc."); setTimeout(() => setGenError(null), 2500);
+    } finally {
+      setMvRetrying((s) => { const n = new Set(s); n.delete(key); return n; });
+    }
+  }
+  // Tạo lại 1 ảnh đã có trong lịch sử đa góc (thay tại chỗ).
+  const retryView = (v) => generateOne(MULTIVIEW_ANGLES.find((a) => a.id === v.id), v.uid);
 
   // Escape ký tự đặc biệt để chèn an toàn vào HTML (tránh vỡ layout / XSS).
   function escapeHtml(v) {
@@ -2911,10 +2983,13 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
   // ===== MULTIVIEW — pane "Đa góc": tạo thêm nhiều góc nhìn từ ảnh AI =====
   const mvSelCount = mvSel.size;
-  const mvDoneList = multiViews.filter((v) => v.status === "done" && v.img);
-  const mvDoneCount = mvDoneList.length;
-  const openMvGallery = (id) => {
-    const i = mvDoneList.findIndex((x) => x.id === id);
+  // Gallery & lịch sử dùng mvAll (tích lũy mọi batch). mvDoneCount = tổng đã có.
+  const mvDoneList = mvAll;
+  const mvDoneCount = mvAll.length;
+  // Các ô của batch ĐANG chạy còn dang dở (chưa "done") -> hiện tiến trình.
+  const mvPending = multiViews.filter((v) => v.status !== "done");
+  const openMvGallery = (uid) => {
+    const i = mvDoneList.findIndex((x) => x.uid === uid);
     setMvGalleryIdx(i >= 0 ? i : 0);
   };
   const toggleMvAngle = (id) => setMvSel((s) => {
@@ -2976,34 +3051,26 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               : (<><LayoutGrid className="w-5 h-5" /> Tạo {mvSelCount} góc nhìn</>)}
           </button>
 
-          {/* Kết quả */}
-          {multiViews.length > 0 && (
-            <>
-            {mvDoneCount > 0 && (
-              <button type="button" onClick={() => setMvGalleryIdx(0)}
-                className="w-full mt-4 inline-flex items-center justify-center gap-2 text-[13px] font-semibold rounded-xl px-4 py-2.5 transition-colors"
-                style={{ border: `1px solid ${C.accent}`, color: C.accent, background: "transparent", cursor: "pointer" }}>
-                <Maximize2 className="w-4 h-4" /> Xem tất cả ({mvDoneCount})
-              </button>
-            )}
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              {multiViews.map((v) => (
+          {/* TIẾN TRÌNH batch đang chạy (chỉ các ô chưa xong / lỗi) */}
+          {mvPending.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              {mvPending.map((v) => (
                 <div key={v.id} className="rounded-xl overflow-hidden flex flex-col" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                   <div className="relative flex items-center justify-center" style={{ aspectRatio: "1 / 1", background: C.inputBg }}>
-                    {v.status === "done" && v.img ? (
-                      <>
-                        <img src={v.img} alt={v.label} onClick={() => openMvGallery(v.id)} className="w-full h-full" style={{ objectFit: "cover", cursor: "zoom-in" }} />
-                        <a href={v.img} download={`multiview-${v.id}.png`} onClick={(e) => e.stopPropagation()} title="Tải ảnh"
-                          className="absolute bottom-1.5 right-1.5 inline-flex items-center justify-center rounded-md"
-                          style={{ width: 26, height: 26, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)" }}>
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
-                      </>
-                    ) : v.status === "error" ? (
-                      <div className="flex flex-col items-center gap-1 px-2 text-center">
-                        <AlertCircle className="w-5 h-5" style={{ color: C.neg }} />
-                        <span className="text-[10px]" style={{ color: C.neg }}>{v.error || "Lỗi"}</span>
-                      </div>
+                    {v.status === "error" ? (
+                      mvRetrying.has(`new-${v.id}`) ? (
+                        <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.accentSoft }} />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 px-2 text-center">
+                          <AlertCircle className="w-5 h-5" style={{ color: C.neg }} />
+                          <span className="text-[10px]" style={{ color: C.neg }}>{v.error || "Lỗi"}</span>
+                          <button type="button" onClick={() => generateOne(MULTIVIEW_ANGLES.find((a) => a.id === v.id), null)}
+                            className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-md px-2 py-0.5"
+                            style={{ border: `1px solid ${C.accent}`, color: C.accent, background: "transparent", cursor: "pointer" }}>
+                            <RefreshCw className="w-3 h-3" /> Tạo lại
+                          </button>
+                        </div>
+                      )
                     ) : (
                       <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.accentSoft }} />
                     )}
@@ -3012,7 +3079,52 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 </div>
               ))}
             </div>
-            </>
+          )}
+
+          {/* LỊCH SỬ ĐA GÓC — tích lũy mọi batch, không mất khi tạo mới */}
+          {mvDoneCount > 0 && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
+                  <History className="w-3.5 h-3.5" /> Lịch sử đa góc · {mvDoneCount}
+                </p>
+                <button type="button" onClick={() => setMvGalleryIdx(0)}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-md px-2.5 py-1 transition-colors"
+                  style={{ border: `1px solid ${C.accent}`, color: C.accent, background: "transparent", cursor: "pointer" }}>
+                  <Maximize2 className="w-3.5 h-3.5" /> Xem tất cả
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {mvAll.map((v) => {
+                  const retrying = mvRetrying.has(v.uid);
+                  return (
+                  <div key={v.uid} className="rounded-xl overflow-hidden flex flex-col" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+                    <div className="relative flex items-center justify-center" style={{ aspectRatio: "1 / 1", background: C.inputBg }}>
+                      <img src={v.img} alt={v.label} onClick={() => openMvGallery(v.uid)} className="w-full h-full" style={{ objectFit: "cover", cursor: "zoom-in", opacity: retrying ? 0.4 : 1 }} />
+                      {retrying && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#fff" }} />
+                        </div>
+                      )}
+                      <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
+                        <button type="button" disabled={retrying} onClick={(e) => { e.stopPropagation(); retryView(v); }} title="Tạo lại góc này"
+                          className="inline-flex items-center justify-center rounded-md"
+                          style={{ width: 26, height: 26, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: retrying ? "default" : "pointer" }}>
+                          <RefreshCw className={`w-3.5 h-3.5${retrying ? " animate-spin" : ""}`} />
+                        </button>
+                        <a href={v.img} download={`multiview-${v.id}.png`} onClick={(e) => e.stopPropagation()} title="Tải ảnh"
+                          className="inline-flex items-center justify-center rounded-md"
+                          style={{ width: 26, height: 26, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)" }}>
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                    <div className="px-2 py-1.5 text-[11px] font-semibold truncate" style={{ color: C.textDim }}>{v.label}</div>
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </>
       )}
@@ -4546,6 +4658,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               <div className="mt-3 flex items-center justify-center gap-3 text-sm" style={{ color: "#fff" }} onClick={(e) => e.stopPropagation()}>
                 <span className="font-semibold">{cur.label}</span>
                 <span style={{ color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>{idx + 1}/{len}</span>
+                <button type="button" disabled={mvRetrying.has(cur.uid)} onClick={() => retryView(cur)} title="Tạo lại góc này"
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.35)", color: "#fff", cursor: mvRetrying.has(cur.uid) ? "default" : "pointer" }}>
+                  <RefreshCw className={`w-3.5 h-3.5${mvRetrying.has(cur.uid) ? " animate-spin" : ""}`} /> Tạo lại
+                </button>
                 <a href={cur.img} download={`multiview-${cur.id}.png`} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.35)", color: "#fff" }}>
                   <Download className="w-3.5 h-3.5" /> Tải ảnh
                 </a>
@@ -4555,7 +4671,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               {len > 1 && (
                 <div className="mt-3 flex items-center justify-center gap-2 flex-wrap max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
                   {mvDoneList.map((m, i) => (
-                    <button key={m.id} type="button" onClick={() => setMvGalleryIdx(i)} title={m.label}
+                    <button key={m.uid} type="button" onClick={() => setMvGalleryIdx(i)} title={m.label}
                       className="rounded-md overflow-hidden"
                       style={{ width: 56, height: 56, border: i === idx ? "2px solid #fff" : "2px solid transparent", opacity: i === idx ? 1 : 0.55, cursor: "pointer" }}>
                       <img src={m.img} alt={m.label} className="w-full h-full" style={{ objectFit: "cover" }} />
