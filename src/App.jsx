@@ -1218,11 +1218,13 @@ export default function InteriorPromptAgent() {
 
   // ===== MULTIVIEW (đa góc nhìn) — tạo thêm nhiều góc máy từ ảnh AI đã render.
   // multiViews: mỗi phần tử = { id, label, status, img, error }. mvBusy: đang
-  // chạy loạt. mvSel: tập id góc đang chọn để tạo. mvZoom: ảnh đang phóng to.
+  // chạy loạt. mvSel: tập id góc đang chọn để tạo. mvGalleryIdx: gallery độc lập.
   const [multiViews, setMultiViews] = useState([]);
   const [mvBusy, setMvBusy] = useState(false);
   const [mvSel, setMvSel] = useState(() => new Set(MULTIVIEW_ANGLES.slice(0, 4).map((a) => a.id)));
-  const [mvZoom, setMvZoom] = useState(null);
+  // Trình xem đa góc ĐỘC LẬP (gallery) — chỉ số ảnh đang xem trong danh sách
+  // ảnh đa góc đã xong; null = đóng. Tách hẳn khỏi viewer ảnh AI (genImg).
+  const [mvGalleryIdx, setMvGalleryIdx] = useState(null);
 
   // =============================================================
   // THANH TIẾN TRÌNH (progress bar) — hiệu ứng "load game", CHẠY THUẦN
@@ -1343,6 +1345,10 @@ export default function InteriorPromptAgent() {
     setGenError(null);
     setImgDirty(false);
     setStatus("done");
+    // Khôi phục bộ ảnh đa góc của phiên bản này (nếu có) -> pane "Đa góc" hiện lại.
+    setMultiViews(Array.isArray(entry.multiView)
+      ? entry.multiView.map((m) => ({ id: m.id, label: m.label, status: "done", img: m.img, error: null }))
+      : []);
   }
 
   // Handler cập nhật ô English. Bọc useCallback để giữ tham chiếu ổn định,
@@ -1968,6 +1974,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     if (!prompt || !modelImg) return; // guard: cần prompt Nano Banana + MODEL
     setGenStatus("generating");
     setGenError(null);
+    // Ảnh AI mới -> bộ đa góc cũ (của ảnh trước) không còn đúng, xóa đi.
+    setMultiViews([]);
+    setMvGalleryIdx(null);
     setComparePos(50); // tạo ảnh mới -> đưa thanh so sánh về giữa
 
     // Mọi mức (0–3) đều render bằng images/edits: gửi MODEL (nền/geometry) + STYLE
@@ -2058,11 +2067,18 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     const base = dataUriToParts(genImg);
     if (!base) { setGenError("Ảnh kết quả không hợp lệ để tạo đa góc."); return; }
     const angles = MULTIVIEW_ANGLES.filter((a) => mvSel.has(a.id));
-    if (angles.length < 3) return; // yêu cầu tối thiểu 3 góc
+    if (angles.length < 1) return; // cần ít nhất 1 góc
 
     setMvBusy(true);
+    setMvGalleryIdx(null); // đóng gallery cũ (chỉ số có thể lệch khi danh sách đổi)
     // Khởi tạo danh sách ô chờ (giữ thứ tự preset).
     setMultiViews(angles.map((a) => ({ id: a.id, label: a.label, status: "pending", img: null, error: null })));
+
+    // Gắn kết quả đa góc vào ĐÚNG entry lịch sử của ảnh AI nguồn (so khớp genImg),
+    // để xuất HTML có kèm. results = ảnh đã xong (tích lũy dần).
+    const srcImg = genImg;
+    const results = [];
+    const attachToHistory = () => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: results.slice() } : e));
 
     const size = AR_TO_SIZE[aspectRatio] || "auto";
     for (const a of angles) {
@@ -2097,6 +2113,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         }
         const uri = `data:image/png;base64,${b64}`;
         setMultiViews((prev) => prev.map((v) => v.id === a.id ? { ...v, status: "done", img: uri } : v));
+        results.push({ id: a.id, label: a.label, img: uri });
+        attachToHistory();
         bumpCount("images");
       } catch (err) {
         console.error(err);
@@ -2187,6 +2205,16 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       ? `<h2>Ảnh đã tạo</h2><img class="genimg" src="${h.genImg}" alt="Anh AI tao">`
       : "";
 
+    // Bộ ảnh ĐA GÓC (multiview) — mỗi ảnh là data URI, nhúng thành lưới.
+    const mvList = Array.isArray(h.multiView) ? h.multiView.filter((m) => m && m.img) : [];
+    const multiViewHtml = mvList.length
+      ? `<h2>Đa góc nhìn · ${mvList.length} ảnh</h2><div class="mv-grid">${mvList.map((m) => `
+        <figure class="mv-item">
+          <img src="${m.img}" alt="${escapeHtml(m.label)}">
+          <figcaption>${escapeHtml(m.label)}</figcaption>
+        </figure>`).join("")}</div>`
+      : "";
+
     // Khối thay đổi đã áp dụng (nếu có).
     const changesHtml = (h.changes && h.changes.length > 0)
       ? `<ul class="changes">${h.changes.map((c) => {
@@ -2273,6 +2301,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   }
   footer a{color:var(--accent); text-decoration:none;}
   .genimg{max-width:100%; height:auto; border-radius:10px; border:1px solid var(--line); margin:8px 0;}
+  .mv-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:8px 0;}
+  .mv-item{margin:0; background:var(--panel); border:1px solid var(--lineSoft); border-radius:10px; overflow:hidden;}
+  .mv-item img{display:block; width:100%; height:auto;}
+  .mv-item figcaption{padding:8px 10px; font-size:12px; font-weight:600; color:var(--accentSoft);}
   @media print{ body{background:#fff; color:#111;} .field,.param,.prompt-text{background:#f5f7fa;} }
 </style>
 </head>
@@ -2298,6 +2330,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     ${changesHtml}
 
     ${imageHtml}
+
+    ${multiViewHtml}
 
     <h2>Prompt render (English)</h2>
     ${promptsHtml}
@@ -2851,7 +2885,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
   // ===== MULTIVIEW — pane "Đa góc": tạo thêm nhiều góc nhìn từ ảnh AI =====
   const mvSelCount = mvSel.size;
-  const mvDoneCount = multiViews.filter((v) => v.status === "done").length;
+  const mvDoneList = multiViews.filter((v) => v.status === "done" && v.img);
+  const mvDoneCount = mvDoneList.length;
+  const openMvGallery = (id) => {
+    const i = mvDoneList.findIndex((x) => x.id === id);
+    setMvGalleryIdx(i >= 0 ? i : 0);
+  };
   const toggleMvAngle = (id) => setMvSel((s) => {
     const n = new Set(s);
     if (n.has(id)) n.delete(id); else n.add(id);
@@ -2883,7 +2922,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           <div className="rounded-2xl p-3 mb-3" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: C.accentSoft }}>Chọn góc nhìn</p>
-              <span className="text-[11px]" style={{ color: mvSelCount < 3 ? C.neg : C.textDim, fontFamily: MONO }}>{mvSelCount} đã chọn{mvSelCount < 3 ? " · cần ≥ 3" : ""}</span>
+              <span className="text-[11px]" style={{ color: mvSelCount < 1 ? C.neg : C.textDim, fontFamily: MONO }}>{mvSelCount} đã chọn{mvSelCount < 1 ? " · chọn ≥ 1" : ""}</span>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {MULTIVIEW_ANGLES.map((a) => {
@@ -2902,9 +2941,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           <button
             type="button"
             onClick={generateMultiview}
-            disabled={mvBusy || mvSelCount < 3}
-            className={`w-full inline-flex items-center justify-center gap-2 text-[15px] font-semibold rounded-xl px-4 py-3 transition-all ${(mvBusy || mvSelCount < 3) ? "" : "ipa-glow"}`}
-            style={{ border: `1px solid ${C.accent}`, color: (mvBusy || mvSelCount < 3) ? C.textDim : C.onAccent, background: (mvBusy || mvSelCount < 3) ? C.panel2 : C.accent, cursor: (mvBusy || mvSelCount < 3) ? "not-allowed" : "pointer" }}
+            disabled={mvBusy || mvSelCount < 1}
+            className={`w-full inline-flex items-center justify-center gap-2 text-[15px] font-semibold rounded-xl px-4 py-3 transition-all ${(mvBusy || mvSelCount < 1) ? "" : "ipa-glow"}`}
+            style={{ border: `1px solid ${C.accent}`, color: (mvBusy || mvSelCount < 1) ? C.textDim : C.onAccent, background: (mvBusy || mvSelCount < 1) ? C.panel2 : C.accent, cursor: (mvBusy || mvSelCount < 1) ? "not-allowed" : "pointer" }}
           >
             {mvBusy
               ? (<><Loader2 className="w-5 h-5 animate-spin" /> Đang dựng… {mvDoneCount}/{multiViews.length}</>)
@@ -2913,13 +2952,21 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
           {/* Kết quả */}
           {multiViews.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <>
+            {mvDoneCount > 0 && (
+              <button type="button" onClick={() => setMvGalleryIdx(0)}
+                className="w-full mt-4 inline-flex items-center justify-center gap-2 text-[13px] font-semibold rounded-xl px-4 py-2.5 transition-colors"
+                style={{ border: `1px solid ${C.accent}`, color: C.accent, background: "transparent", cursor: "pointer" }}>
+                <Maximize2 className="w-4 h-4" /> Xem tất cả ({mvDoneCount})
+              </button>
+            )}
+            <div className="grid grid-cols-2 gap-2 mt-3">
               {multiViews.map((v) => (
                 <div key={v.id} className="rounded-xl overflow-hidden flex flex-col" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                   <div className="relative flex items-center justify-center" style={{ aspectRatio: "1 / 1", background: C.inputBg }}>
                     {v.status === "done" && v.img ? (
                       <>
-                        <img src={v.img} alt={v.label} onClick={() => setMvZoom(v)} className="w-full h-full" style={{ objectFit: "cover", cursor: "zoom-in" }} />
+                        <img src={v.img} alt={v.label} onClick={() => openMvGallery(v.id)} className="w-full h-full" style={{ objectFit: "cover", cursor: "zoom-in" }} />
                         <a href={v.img} download={`multiview-${v.id}.png`} onClick={(e) => e.stopPropagation()} title="Tải ảnh"
                           className="absolute bottom-1.5 right-1.5 inline-flex items-center justify-center rounded-md"
                           style={{ width: 26, height: 26, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)" }}>
@@ -2939,6 +2986,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 </div>
               ))}
             </div>
+            </>
           )}
         </>
       )}
@@ -4430,24 +4478,68 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           </p>
         </div>
 
-        {/* ===== LIGHTBOX phóng to ảnh MULTIVIEW ===== */}
-        {mvZoom && mvZoom.img && (
-          <div
-            onClick={() => setMvZoom(null)}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 ipa-anim"
-            style={{ background: "rgba(0,0,0,0.90)", backdropFilter: "blur(2px)" }}
-          >
-            <div className="relative w-full max-w-[1100px]" onClick={(e) => e.stopPropagation()}>
-              <img src={mvZoom.img} alt={mvZoom.label} className="w-full rounded-xl" style={{ maxHeight: "88dvh", objectFit: "contain" }} />
-              <div className="mt-2 flex items-center justify-center gap-3 text-sm" style={{ color: "#fff" }}>
-                <span>{mvZoom.label}</span>
-                <a href={mvZoom.img} download={`multiview-${mvZoom.id}.png`} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.35)", color: "#fff" }}>
+        {/* ===== GALLERY ĐA GÓC (độc lập) — xem nhiều ảnh đa góc, prev/next +
+             dải thumbnail. Tách hẳn khỏi viewer ảnh AI (genImg). ===== */}
+        {mvGalleryIdx != null && mvDoneList[mvGalleryIdx] && (() => {
+          const len = mvDoneList.length;
+          const idx = mvGalleryIdx;
+          const cur = mvDoneList[idx];
+          const go = (d) => setMvGalleryIdx((idx + d + len) % len);
+          return (
+            <div
+              onClick={() => setMvGalleryIdx(null)}
+              className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 ipa-anim"
+              style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(2px)" }}
+            >
+              {/* nút đóng */}
+              <button type="button" onClick={(e) => { e.stopPropagation(); setMvGalleryIdx(null); }}
+                className="absolute top-4 right-4 inline-flex items-center justify-center rounded-lg"
+                style={{ width: 38, height: 38, background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer" }}>
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="relative w-full max-w-[1100px] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                {len > 1 && (
+                  <button type="button" onClick={() => go(-1)} title="Ảnh trước"
+                    className="absolute left-0 -ml-2 md:-ml-14 inline-flex items-center justify-center rounded-full"
+                    style={{ width: 44, height: 44, background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer" }}>
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                )}
+                <img src={cur.img} alt={cur.label} className="rounded-xl" style={{ maxHeight: "78dvh", maxWidth: "100%", objectFit: "contain" }} />
+                {len > 1 && (
+                  <button type="button" onClick={() => go(1)} title="Ảnh kế"
+                    className="absolute right-0 -mr-2 md:-mr-14 inline-flex items-center justify-center rounded-full"
+                    style={{ width: 44, height: 44, background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer" }}>
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                )}
+              </div>
+
+              {/* nhãn + đếm + tải */}
+              <div className="mt-3 flex items-center justify-center gap-3 text-sm" style={{ color: "#fff" }} onClick={(e) => e.stopPropagation()}>
+                <span className="font-semibold">{cur.label}</span>
+                <span style={{ color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>{idx + 1}/{len}</span>
+                <a href={cur.img} download={`multiview-${cur.id}.png`} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.35)", color: "#fff" }}>
                   <Download className="w-3.5 h-3.5" /> Tải ảnh
                 </a>
               </div>
+
+              {/* dải thumbnail */}
+              {len > 1 && (
+                <div className="mt-3 flex items-center justify-center gap-2 flex-wrap max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+                  {mvDoneList.map((m, i) => (
+                    <button key={m.id} type="button" onClick={() => setMvGalleryIdx(i)} title={m.label}
+                      className="rounded-md overflow-hidden"
+                      style={{ width: 56, height: 56, border: i === idx ? "2px solid #fff" : "2px solid transparent", opacity: i === idx ? 1 : 0.55, cursor: "pointer" }}>
+                      <img src={m.img} alt={m.label} className="w-full h-full" style={{ objectFit: "cover" }} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ===== LIGHTBOX phóng to ảnh Style Preset (đã tách khỏi footer) ===== */}
         {zoomStyle && (
