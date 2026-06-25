@@ -106,11 +106,14 @@ function ZoomBadge({ zoom, onReset }) {
 // Ảnh có thể phóng to bằng Ctrl + lăn chuột; kéo để di chuyển khi đã zoom.
 function ZoomImg({ src, alt, imgClassName, imgStyle, frameClassName, frameStyle }) {
   const z = useCtrlZoom();
+  // Tỷ lệ THẬT của ảnh (đọc khi load) -> gán aspect-ratio cho khung để khung ôm
+  // sát ảnh cả 2 chiều và vẫn fit gọn trong canvas (không méo, không thừa nền).
+  const [ar, setAr] = useState(null);
   return (
     <div
       ref={z.ref}
       className={frameClassName}
-      style={{ position: "relative", overflow: "hidden", touchAction: "none", cursor: z.zoom > 1 ? (z.dragging ? "grabbing" : "grab") : "default", ...frameStyle }}
+      style={{ position: "relative", overflow: "hidden", touchAction: "none", ...(ar ? { aspectRatio: ar } : null), cursor: z.zoom > 1 ? (z.dragging ? "grabbing" : "grab") : "default", ...frameStyle }}
       title="Giữ Ctrl + lăn chuột để phóng to / thu nhỏ"
       onContextMenu={(e) => e.preventDefault()}
       {...z.panHandlers}
@@ -120,6 +123,7 @@ function ZoomImg({ src, alt, imgClassName, imgStyle, frameClassName, frameStyle 
         alt={alt}
         draggable={false}
         className={imgClassName}
+        onLoad={(e) => { const { naturalWidth: w, naturalHeight: h } = e.currentTarget; if (w && h) setAr(`${w} / ${h}`); }}
         style={{ transform: z.transform, transformOrigin: "center center", transition: z.dragging ? "none" : "transform 90ms ease-out", pointerEvents: "none", ...imgStyle }}
       />
       <ZoomBadge zoom={z.zoom} onReset={z.reset} />
@@ -3138,9 +3142,10 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         *:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
         /* Ảnh trong khung fit: LUÔN giữ đúng tỉ lệ khung — cao co lại thì ngang co theo.
            Khung ôm SÁT ảnh (width:fit-content) nên không bị kéo giãn ngang full khung. */
-        .ipa-fit-frame { display: flex !important; align-items: center; justify-content: center;
-          width: fit-content !important; max-width: 100% !important; margin-left: auto; margin-right: auto; }
-        .ipa-fit-frame > img { display: block; width: auto !important; height: auto !important; max-width: 100% !important; object-fit: contain; }
+        .ipa-fit-frame { display: block; width: auto !important; height: auto !important;
+          max-width: 100% !important; margin-left: auto; margin-right: auto; }
+        .ipa-fit-frame > img { display: block; width: 100% !important; height: 100% !important;
+          max-width: 100% !important; max-height: 100% !important; object-fit: contain; }
         /* === Layout 2 cột desktop — CSS thuần, không phụ thuộc Tailwind JIT === */
         @property --ipa-lw { syntax: '<length>'; inherits: false; initial-value: 396px; }
         .ipa-grid { margin-top: 1rem; }
@@ -3177,9 +3182,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           .ipa-result-caption { flex: 0 0 auto; }
           /* placeholder đang tạo ảnh: fill vùng canvas (không dùng aspect-ratio gây tràn) */
           .ipa-gen-fill { flex: 1 1 auto; min-height: 0; width: 100%; aspect-ratio: auto !important; }
-          /* Ảnh MODEL / kết quả: fit TRỌN chiều cao canvas (override inline vh) -> không cắt trên/dưới ở màn hình thấp */
+          /* Ảnh MODEL / kết quả: khung ôm theo aspect-ratio của ảnh, fit TRỌN trong canvas
+             (cao & ngang co cùng tỉ lệ) -> không méo, không cắt, không thừa nền. */
           .ipa-fit-frame { max-height: 100% !important; }
-          .ipa-fit-frame > img { max-height: 100% !important; height: auto !important; width: auto !important; max-width: 100% !important; object-fit: contain; }
           /* 2 ảnh cạnh nhau: lưới + ô chiếm hết chiều cao còn lại để mỗi ảnh fit thay vì tràn */
           .ipa-cmp-grid { flex: 1 1 auto; min-height: 0; }
           .ipa-cmp-grid > div { min-height: 0; }
@@ -4251,7 +4256,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                                       style={{ background: C.inputBg, border: `1px solid ${C.line}`, color: C.text }}>
                                       {cmpOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                                     </select>
-                                    <div className="relative rounded-xl overflow-hidden flex items-center justify-center" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
+                                    <div className="relative rounded-xl overflow-hidden flex items-center justify-center md:flex-1 md:min-h-0" style={{ background: C.bg, border: `1px solid ${C.line}`, minHeight: 160 }}>
                                       {pick ? (
                                         <ZoomImg
                                           src={pick.src}
