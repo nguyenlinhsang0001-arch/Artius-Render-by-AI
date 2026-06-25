@@ -36,24 +36,36 @@ function useCtrlZoom() {
 
   const s = st.current;
   const reset = () => { s.z = 1; s.x = 0; s.y = 0; rerender(); };
+  // Pan dùng listener trên window: bắt đầu lại được nhiều lần, không phụ thuộc
+  // pointer-capture (vốn gây lỗi "chỉ pan được lần đầu").
   const onPointerDown = (e) => {
-    if (s.z <= 1) return;
-    drag.current = { px: e.clientX, py: e.clientY, ox: s.x, oy: s.y };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-  };
-  const onPointerMove = (e) => {
-    if (!drag.current) return;
-    s.x = drag.current.ox + (e.clientX - drag.current.px);
-    s.y = drag.current.oy + (e.clientY - drag.current.py);
+    if (st.current.z <= 1) return;
+    e.preventDefault();
+    const start = { px: e.clientX, py: e.clientY, ox: st.current.x, oy: st.current.y };
+    drag.current = start;
     rerender();
+    const move = (ev) => {
+      st.current.x = start.ox + (ev.clientX - start.px);
+      st.current.y = start.oy + (ev.clientY - start.py);
+      rerender();
+    };
+    const up = () => {
+      drag.current = null;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      rerender();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
-  const onPointerUp = (e) => { drag.current = null; try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} };
 
   return {
     ref, zoom: s.z, reset,
     dragging: !!drag.current,
     transform: `translate(${s.x}px, ${s.y}px) scale(${s.z})`,
-    panHandlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onDoubleClick: reset },
+    panHandlers: { onPointerDown, onDoubleClick: reset },
   };
 }
 
@@ -3106,6 +3118,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         .ipa-skel { background: linear-gradient(90deg, ${C.panel2} 25%, ${C.line} 37%, ${C.panel2} 63%); background-size: 200% 100%; animation: ipa-shimmer 1.4s ease-in-out infinite; }
         textarea, input, button { font-family: inherit; }
         *:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
+        /* Ảnh trong khung fit: LUÔN giữ đúng tỉ lệ khung — cao co lại thì ngang co theo
+           (width/height auto + object-contain), khung ôm sát ảnh, không méo, không cắt. */
+        .ipa-fit-frame > img { width: auto !important; height: auto !important; max-width: 100% !important; object-fit: contain; }
         /* === Layout 2 cột desktop — CSS thuần, không phụ thuộc Tailwind JIT === */
         @property --ipa-lw { syntax: '<length>'; inherits: false; initial-value: 396px; }
         .ipa-grid { margin-top: 1rem; }
