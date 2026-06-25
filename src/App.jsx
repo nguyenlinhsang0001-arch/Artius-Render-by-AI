@@ -224,6 +224,31 @@ function dataUriToParts(uri) {
   return { mediaType: m[1], data: m[2] };
 }
 
+// Thu nhỏ + nén ảnh (data URI) qua canvas -> { mediaType, data } JPEG.
+// Mục đích: ảnh gpt-image trả về là PNG lớn (base64 vượt giới hạn body proxy
+// -> HTTP 413). Hạ cạnh dài về <= maxDim và chuyển JPEG q≈0.85 đủ làm ảnh tham
+// chiếu thiết kế cho việc dựng góc mới, mà payload nhẹ hơn nhiều lần.
+function downscaleDataUri(uri, maxDim = 1024, quality = 0.85) {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUriToParts(out) || dataUriToParts(uri));
+      };
+      img.onerror = () => resolve(dataUriToParts(uri));
+      img.src = uri;
+    } catch { resolve(dataUriToParts(uri)); }
+  });
+}
+
 // =============================================================
 // NEGATIVE PROMPT mặc định cho Nano Banana. Nano Banana không có cú pháp
 // negative riêng -> liệt kê danh sách lỗi đầy đủ (model sẽ được hướng dẫn diễn
@@ -2064,7 +2089,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
   async function generateMultiview() {
     if (!genImg || mvBusy) return;
-    const base = dataUriToParts(genImg);
+    // Nén ảnh nguồn trước khi gửi để tránh HTTP 413 (payload quá lớn).
+    const base = await downscaleDataUri(genImg, 1024, 0.85);
     if (!base) { setGenError("Ảnh kết quả không hợp lệ để tạo đa góc."); return; }
     const angles = MULTIVIEW_ANGLES.filter((a) => mvSel.has(a.id));
     if (angles.length < 1) return; // cần ít nhất 1 góc
