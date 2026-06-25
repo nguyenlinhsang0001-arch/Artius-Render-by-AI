@@ -136,9 +136,8 @@ const PLATFORMS = [
 ];
 
 // =============================================================
-// ASPECT RATIO — tỷ lệ khung hình. Mọi tool render đều coi đây là tham số
-// bắt buộc; với Midjourney nó còn ảnh hưởng cách model tư duy bố cục, không
-// chỉ là cắt cúp. value = chuỗi "W:H" dùng cho --ar và mô tả câu chữ.
+// ASPECT RATIO — tỷ lệ khung hình, tham số bắt buộc khi render.
+// value = chuỗi "W:H" dùng cho mô tả câu chữ + map sang size gpt-image.
 // =============================================================
 const ASPECT_RATIOS = [
   { value: "21:9", label: "21:9", desc: "Điện ảnh siêu rộng — panorama nội thất" },
@@ -154,8 +153,7 @@ const ASPECT_RATIOS = [
   { value: "9:16", label: "9:16", desc: "Dọc cao — story/reel" },
 ];
 
-// Mô tả câu chữ cho aspect ratio (dùng cho nền tảng không nhận --ar như
-// Nano Banana).
+// Mô tả câu chữ cho aspect ratio (Nano Banana diễn đạt khung bằng câu chữ).
 const ASPECT_PHRASE = {
   "21:9": "an ultra-wide 21:9 cinematic composition",
   "2:1":  "a wide 2:1 panoramic composition",
@@ -203,40 +201,17 @@ const AR_TO_SIZE = {
 };
 
 // =============================================================
-// NEGATIVE PROMPT mặc định — KHÔNG còn là một hằng số chung mà PHỤ THUỘC nền
-// tảng. Mỗi nền tảng có cú pháp/độ "ăn" negative khác nhau, nên giá trị mặc
-// định cũng khác:
-//  - Nano Banana: không có cú pháp negative riêng -> liệt kê danh sách lỗi đầy
-//    đủ (model sẽ được hướng dẫn diễn đạt khẳng định những điều cần TRÁNH).
-//  - Midjourney: dùng tham số --no, nên giá trị mặc định ĐÃ gồm sẵn tiền tố
-//    "--no " và ghép thẳng vào cuối dòng prompt (guide KHÔNG thêm --no nữa).
-// Khi người dùng đổi nền tảng, ô negative tự nạp lại giá trị tương ứng.
+// NEGATIVE PROMPT mặc định cho Nano Banana. Nano Banana không có cú pháp
+// negative riêng -> liệt kê danh sách lỗi đầy đủ (model sẽ được hướng dẫn diễn
+// đạt khẳng định những điều cần TRÁNH).
 // =============================================================
 const NEGATIVE_BY_PLATFORM = {
   nanobanana:
     "people, extra doors, cluttered cables, watermark, text, signature, blurry, low resolution, grainy, oversaturated, cartoonish, 3d render, cgi, bad anatomy, poorly drawn, bad lighting, overexposed, underexposed, draft, amateur photo, warped walls, leaning vertical lines, fisheye distortion, lens distortion, curved straight edges, perspective drift",
-  midjourney:
-    "people, extra doors, cluttered cables, text, watermark, ceiling height",
 };
 
-// Fallback chung khi ô negative rỗng và chưa rõ nền tảng (mặc định Nano Banana).
+// Fallback chung khi ô negative rỗng (mặc định Nano Banana).
 const DEFAULT_NEGATIVE = NEGATIVE_BY_PLATFORM.nanobanana;
-
-// =============================================================
-// STYLE INTENSITY -> giá trị --s (stylize) của Midjourney.
-// --s thấp = render sát mô tả (chính xác), --s cao = diễn giải sáng tạo
-// (đẹp nhưng hy sinh độ chính xác). Hầu hết việc chuyên nghiệp ở 200–400.
-// Map 4 mức của trục Style Intensity (0..3) sang dải này.
-// =============================================================
-const STYLE_INTENSITY_TO_S = [120, 250, 450, 750]; // Nhẹ / Vừa / Đậm / Max
-
-// =============================================================
-// GEOMETRY -> --iw (image weight) của Midjourney khi có ảnh MODEL làm
-// image-prompt. --iw cao = bám ảnh tham chiếu chặt (giữ bố cục/hình khối);
-// --iw thấp = ảnh chỉ là cảm hứng. Dải v7: 0–3, mặc định 1.
-// Map 4 mức Geometry (0..3) = Khóa / Sát / Mềm / Mở.
-// =============================================================
-const GEOMETRY_TO_IW = [3, 2, 1, 0.5]; // Khóa / Sát / Mềm / Mở
 
 // Các yếu tố STYLE bóc từ ảnh mẫu (KHÔNG gồm góc nhìn).
 const STYLE_KEYS = [
@@ -283,15 +258,6 @@ const EXT_LABELS = {
   layout: "Bố cục Layout",
 };
 
-// 2 field PHỤ chỉ dùng cho case Midjourney + BLEND: giữ keyword của từng style
-// TÁCH RIÊNG (không hòa) để dựng PART 2 / PART 3 của chuỗi multi-prompt (::).
-// Nhờ nằm trong analysis (chỉnh tay được), chỉnh sửa của user chảy thẳng vào
-// tail thay vì bị guide kéo về `brief` tĩnh khi rebuild.
-const MJ_BLEND_KEYS = [
-  ["blend_primary_keywords", "Blend · từ khóa style CHÍNH (MJ)"],
-  ["blend_secondary_keywords", "Blend · từ khóa style PHỤ (MJ)"],
-];
-
 // (v31) Field PHỤ cho BLEND trên gpt-image-2: bộ phân tích ĐẦY ĐỦ của style PHỤ
 // giữ RIÊNG (song song bộ chính, không hòa). Có đủ palette/lighting/mood nên
 // ratio trộn được CÂN BẰNG thật; rebuild text-only re-mix mà không analyze lại.
@@ -331,14 +297,12 @@ function blendComposeClause(ratioA) {
   return ` BLEND COMPOSITION (the target style is a fusion of TWO interior styles, each with its OWN full analysis — the PRIMARY style fields and the parallel "blend_secondary_*" fields): ${t.compose} The two MUST resolve into a single cohesive interior, never split into separate zones.`;
 }
 
-// Mô tả định dạng prompt mong muốn cho từng nền tảng.
-// LƯU Ý: các placeholder {{AR}}, {{NEG}}, {{S}}, {{ARPHRASE}} sẽ được
+// Mô tả định dạng prompt mong muốn cho Nano Banana.
+// LƯU Ý: các placeholder {{AR}}, {{NEG}}, {{ARPHRASE}} sẽ được
 // effectivePlatformGuide() thay bằng giá trị thực trước khi gửi cho model.
 const PLATFORM_GUIDE = {
   nanobanana:
     "an IMAGE EDITING / RESTYLE instruction for Nano Banana 2 (Gemini 3.1 Flash Image), NOT a scene-generation prompt and NOT using --params. Frame it explicitly as editing the MODEL image: open with a direct command such as 'Using the imported image (the 3D model) as the exact base, do NOT change the camera angle, perspective, framing, vanishing lines, room proportions, or the position of any walls, windows, doors, or furniture.' Then: 'Only restyle the surfaces and materials — apply the materials, colors, lighting mood and finishing style onto this exact scene.' Compose it as {{ARPHRASE}}. Because Nano Banana has no negative-prompt syntax, convert the avoid-list into positive phrasing woven into the sentence (e.g. keep vertical lines perfectly straight, accurate perspective, clean uncluttered surfaces). Avoid: {{NEG}}. End with: 'Preserve the original composition and geometry precisely; this is a re-render of the same room, only photorealistic and finished.'",
-  // LƯU Ý: Midjourney KHÔNG dùng key ở đây — effectivePlatformGuide() luôn gọi
-  // buildMidjourneyGuide() (hỗ trợ image-reference --iw/--sref) cho nền tảng này.
 };
 
 // =============================================================
@@ -360,17 +324,13 @@ const PLATFORM_GUIDE = {
 // idx 0..3 dùng để tra GEOMETRY_MATRIX bên dưới.
 const GEOMETRY_LEVELS = [
   { value: 0, label: "Khóa tuyệt đối", short: "Khóa", shortNoModel: "Chặt",      labelNoModel: "Kỷ luật cao", desc: "Giữ y nguyên góc máy, tường, cửa, vị trí đồ đạc.", descExt: "Giữ y nguyên góc máy, khối nhà, mặt tiền, cửa, mái — chỉ đổi vật liệu & màu facade.",
-    descNoModel: "Bố cục chặt: tỷ lệ chuẩn xác, đường thẳng đứng, một phòng nhất quán, góc máy ổn định.",
-    descMJ: "--iw 3 · bám ảnh MODEL rất chặt (giữ bố cục & hình khối)." },
+    descNoModel: "Bố cục chặt: tỷ lệ chuẩn xác, đường thẳng đứng, một phòng nhất quán, góc máy ổn định." },
   { value: 1, label: "Bám sát",        short: "Sát",  shortNoModel: "Quy củ",     labelNoModel: "Khá chặt",    desc: "Giữ góc máy & bố cục, được đổi decor/fixture nhỏ.", descExt: "Giữ massing & bố cục cửa; đổi chi tiết trang trí, đèn ngoài & landscaping nhỏ.",
-    descNoModel: "Bám sát: bố cục quy củ, hợp lý — cho phép vài điểm nhấn kiến trúc nhẹ.",
-    descMJ: "--iw 2 · bám ảnh MODEL khá chặt, đổi nhẹ chi tiết." },
+    descNoModel: "Bám sát: bố cục quy củ, hợp lý — cho phép vài điểm nhấn kiến trúc nhẹ." },
   { value: 2, label: "Linh hoạt",      short: "Mềm",  shortNoModel: "Linh hoạt",  labelNoModel: "Tự do",       desc: "Giữ góc máy, tỷ lệ phòng & chiều cao trần — được sắp xếp lại nội thất.", descExt: "Giữ khối tổng, số tầng & góc máy; đổi ngôn ngữ mặt tiền, vật liệu & chi tiết kiến trúc.",
-    descNoModel: "Linh hoạt: tự do sắp đặt không gian & góc nhìn, vẫn giữ hợp lý.",
-    descMJ: "--iw 1 · cân bằng giữa ảnh MODEL và mô tả." },
+    descNoModel: "Linh hoạt: tự do sắp đặt không gian & góc nhìn, vẫn giữ hợp lý." },
   { value: 3, label: "Lấy cảm hứng",   short: "Mở",   shortNoModel: "Táo bạo",    labelNoModel: "Phá cách",    desc: "Chỉ còn giữ góc máy & phối cảnh theo Model.", descExt: "Chỉ giữ góc máy; tái thiết kế cả massing, rooflines & toàn bộ mặt tiền.",
-    descNoModel: "Táo bạo: kiến trúc điêu khắc/biomorphic, góc nhìn lạ, tái diễn giải mạnh.",
-    descMJ: "--iw 0.5 · ảnh MODEL chỉ là cảm hứng, tự do diễn giải." },
+    descNoModel: "Táo bạo: kiến trúc điêu khắc/biomorphic, góc nhìn lạ, tái diễn giải mạnh." },
 ];
 
 const STYLE_INTENSITY_LEVELS = [
@@ -1168,8 +1128,8 @@ export default function InteriorPromptAgent() {
   // blendMode bật → ngoài stylePreset (style A / primary) còn dùng styleB
   // (secondary) + blendRatio (% của style A, 50..90). CHỈ áp khi KHÔNG có ảnh
   // STYLE (ảnh STYLE luôn ưu tiên & thay mọi preset). Blend được diễn đạt bằng
-  // NGÔN NGỮ TRỌNG SỐ trong styleSourceNote → tự chảy vào cả Nano Banana lẫn MJ
-  // và giữ kết quả là MỘT không gian thống nhất.
+  // NGÔN NGỮ TRỌNG SỐ trong styleSourceNote → giữ kết quả là MỘT không gian
+  // thống nhất.
   const [blendMode, setBlendMode] = useState(false);
   const [styleB, setStyleB] = useState(null);        // id preset phụ (secondary)
   const [blendRatio, setBlendRatio] = useState(70);  // % của style A (primary)
@@ -1329,7 +1289,9 @@ export default function InteriorPromptAgent() {
     if (entry.analysis) setAnalysis({ ...entry.analysis });
     const pr = entry.params;
     if (pr) {
-      setPlatform(pr.platform);
+      // Chỉ còn 1 nền tảng (Nano Banana). Lịch sử cũ có thể lưu nền tảng khác
+      // -> ép về nanobanana để guide không bị thiếu key.
+      setPlatform(PLATFORMS.some((p) => p.id === pr.platform) ? pr.platform : "nanobanana");
       setStylePreset(pr.stylePreset);
       setBlendMode(pr.blendMode);
       setStyleB(pr.styleB);
@@ -1362,8 +1324,7 @@ export default function InteriorPromptAgent() {
   // pendingChanges bên dưới), nên KHÔNG cần đánh dấu cờ thủ công.
   function changePlatform(id) {
     setPlatform(id);
-    // Đổi nền tảng -> nạp lại negative mặc định tương ứng (Nano Banana vs
-    // Midjourney có cú pháp & nội dung negative khác nhau).
+    // Nạp lại negative mặc định của nền tảng.
     if (NEGATIVE_BY_PLATFORM[id]) setNegativePrompt(NEGATIVE_BY_PLATFORM[id]);
   }
   function changeAspect(v) { setAspectRatio(v); }
@@ -1396,77 +1357,19 @@ export default function InteriorPromptAgent() {
     return STYLE_INTENSITY_CLAUSES[styleIntensity];
   }
 
-  // Thay các placeholder {{AR}} {{ARPHRASE}} {{NEG}} {{S}} bằng giá trị thực
-  // (aspect ratio, mô tả AR câu chữ, negative prompt, giá trị --s của MJ).
+  // Thay các placeholder {{AR}} {{ARPHRASE}} {{NEG}} bằng giá trị thực
+  // (aspect ratio, mô tả AR câu chữ, negative prompt).
   function fillPlaceholders(text) {
     const neg = (negativePrompt || "").trim() || NEGATIVE_BY_PLATFORM[platform] || DEFAULT_NEGATIVE;
-    const sVal = STYLE_INTENSITY_TO_S[styleIntensity] ?? 250;
     return text
       .replaceAll("{{AR}}", aspectRatio)
       .replaceAll("{{ARPHRASE}}", ASPECT_PHRASE[aspectRatio] || `a ${aspectRatio} composition`)
-      .replaceAll("{{NEG}}", neg)
-      .replaceAll("{{S}}", String(sVal));
-  }
-
-  // Trọng số multi-prompt (::) cho style PHỤ khi blend trên Midjourney.
-  // Primary luôn = 1 (mốc, ngang phần scene); secondary = ratioB / ratioA, làm
-  // tròn 2 chữ số → dải 0.11 (90/10) … 1.0 (50/50). MJ chuẩn hóa theo TỶ LỆ
-  // tương đối nên giữ primary ở 1 là đủ, không làm phần scene bị lép.
-  function mjSecondaryWeight(ratioA) {
-    const ratioB = 100 - ratioA;
-    return Math.round((ratioB / ratioA) * 100) / 100;
-  }
-
-  // Sinh guide cho Midjourney có hỗ trợ IMAGE-REFERENCE:
-  //  - Ảnh MODEL (nếu có) -> image-prompt đặt ĐẦU prompt (token <MODEL_IMAGE_URL>)
-  //    + tham số --iw lấy từ Trục 1 (GEOMETRY_TO_IW) để chỉnh độ bám bố cục.
-  //  - Ảnh STYLE (nếu có) -> --sref <STYLE_IMAGE_URL> (mượn phong cách).
-  // Vì tool không host được ảnh, prompt chứa token placeholder để người dùng tự
-  // thay bằng URL ảnh đã upload (kéo vào Discord/MJ web để lấy link).
-  //  - BLEND 2 preset (không có ảnh STYLE) -> dùng MULTI-PROMPT WEIGHT (::) để
-  //    MÃ HÓA tỷ lệ trộn THẬT thay vì chỉ tả bằng chữ (xem mjSecondaryWeight).
-  function buildMidjourneyGuide() {
-    const hasM = !!modelImg;
-    const hasS = !!styleImg;
-    const iw = GEOMETRY_TO_IW[geometry] ?? 1;
-
-    const lead = hasM
-      ? "BEGIN the prompt with the literal token <MODEL_IMAGE_URL> followed by a space — this is an image-prompt that anchors the composition and geometry (the user will paste their uploaded MODEL image URL there). "
-      : "";
-    let extraParams = "";
-    if (hasM) extraParams += ` --iw ${iw}`;
-    if (hasS) extraParams += " --sref <STYLE_IMAGE_URL>";
-    const tokenNote = (hasM || hasS)
-      ? " Output the placeholder token(s) (<MODEL_IMAGE_URL>, <STYLE_IMAGE_URL>) EXACTLY as written, do NOT fabricate real URLs."
-      : "";
-
-    // ── BLEND: mã hóa tỷ lệ bằng :: weight. Chỉ áp khi đang trộn 2 preset hợp
-    // lệ và KHÔNG có ảnh STYLE (ảnh STYLE -> đã dùng --sref, không cần ::). ──
-    const presetA = STYLE_PRESETS.find((p) => p.id === stylePreset) || null;
-    const presetB = STYLE_PRESETS.find((p) => p.id === styleB) || null;
-    const blendActive = blendMode && !hasS && !!presetA && !!presetB && presetB.id !== presetA.id;
-
-    if (blendActive) {
-      const wB = mjSecondaryWeight(blendRatio); // primary = 1, secondary = wB
-      return `a Midjourney prompt that BLENDS TWO interior styles using MULTI-PROMPT WEIGHTING (the :: syntax), so the user's blend ratio is honoured by the renderer itself, not just described. ${lead}Build the prompt body as THREE :: parts on a SINGLE line, in this order:\n` +
-        `• PART 1 — SCENE (weight 1): describe ONLY the subject, room type, spatial layout, camera angle, a lens cue suited to interiors such as '24mm wide-angle', and lighting direction/quality. Put NO style adjectives, materials or colour palette here. Close this part with a bare '::' (default weight 1).\n` +
-        `• PART 2 — PRIMARY STYLE "${presetA.label}" (weight 1): use the exact comma-separated descriptors from the analysis field "blend_primary_keywords", then close it with '::1'.\n` +
-        `• PART 3 — SECONDARY STYLE "${presetB.label}" (weight ${wB}): use the exact descriptors from the analysis field "blend_secondary_keywords", then close it with '::${wB}'.\n` +
-        `The body therefore reads: <scene>:: <blend_primary_keywords>::1 <blend_secondary_keywords>::${wB}\n` +
-        `Then append parameters in this exact order: --ar {{AR}} --style raw --s {{S}} --v 7${extraParams} --no {{NEG}}.${tokenNote} Output everything on ONE line. Every aesthetic descriptor MUST live in PART 2 or PART 3 (never PART 1) so the :: weights, not adjective counts, control the blend. The two keyword sets come from the analysis JSON, so any user edit to those fields must be reflected verbatim here.`;
-    }
-
-    return `a single-line Midjourney prompt written as a natural-language art-direction sentence (NOT a keyword list). ${lead}Lead the description with the primary subject, then style, materials, lighting, mood; add a lens cue suited to interiors such as '24mm wide-angle'. End the line with parameters in this exact order: --ar {{AR}} --style raw --s {{S}} --v 7${extraParams} --no {{NEG}}.${tokenNote}`;
+      .replaceAll("{{NEG}}", neg);
   }
 
   // Sinh chỉ dẫn cho Nano Banana dựa trên TRỤC GEOMETRY kết hợp STYLE INTENSITY.
-  // Các nền tảng khác dùng PLATFORM_GUIDE. Mọi nhánh đều đi qua fillPlaceholders
-  // để chèn aspect ratio / negative / stylize đúng cú pháp từng nền tảng.
+  // Mọi nhánh đều đi qua fillPlaceholders để chèn aspect ratio / negative.
   function effectivePlatformGuide() {
-    // Midjourney: luôn đi qua guide image-reference riêng.
-    if (platform === "midjourney") {
-      return fillPlaceholders(buildMidjourneyGuide());
-    }
     // (v30) BLEND compose clause (gpt-image) — tính SỚM để dùng cho CẢ nhánh
     // không-model (PLATFORM_GUIDE) lẫn nhánh có-model. Gộp vào styleClause nên
     // cả 3 nhánh geometry tự mang directive trộn mà không phải sửa từng guide.
@@ -1764,13 +1667,10 @@ export default function InteriorPromptAgent() {
     // hợp lệ (khác style chính), nhồi mô tả TRỘN với trọng số rõ ràng.
     const presetB = STYLE_PRESETS.find((p) => p.id === styleB) || null;
     const blendActive = blendMode && !!preset && !!presetB && presetB.id !== preset.id;
-    // MJ + blend: yêu cầu thêm 2 field keyword TÁCH RIÊNG để dựng PART 2/PART 3
-    // của chuỗi ::. blendActive đã ngụ ý không có ảnh STYLE (nhánh ternary dưới).
-    const mjBlend = platform === "midjourney" && blendActive && !hasStyleImg;
     const ratioB = 100 - blendRatio;
-    // (v30) BLEND gpt-image active: 2 preset hợp lệ, KHÔNG ảnh STYLE, không MJ.
+    // (v30) BLEND gpt-image active: 2 preset hợp lệ, KHÔNG ảnh STYLE.
     // Quyết định việc thêm field kho accent vào JSON shape + rule.
-    const blendAccentActive = blendActive && !hasStyleImg && !mjBlend;
+    const blendAccentActive = blendActive && !hasStyleImg;
     const styleSourceNote = hasStyleImg
       ? "The STYLE comes from the provided STYLE REFERENCE image."
       : blendActive
@@ -1826,9 +1726,7 @@ Return ONLY a valid JSON object, no markdown/backticks, with this exact shape:
     "proportion_detailing": "${fld.proportion_detailing}",
     "mood": "atmosphere & emotional tone",
     "camera": "${hasModel ? "camera/perspective/framing from the MODEL image" : "camera angle appropriate to the spatial discipline setting"}",
-    "layout": "${fld.layout}"${mjBlend ? `,
-    "blend_primary_keywords": "6-9 signature descriptors of the PRIMARY style ONLY (materials, palette, finishes, mood), comma-separated, NO subject/room/camera words",
-    "blend_secondary_keywords": "5-7 signature descriptors of the SECONDARY style ONLY, comma-separated, NO subject/room/camera words"` : ""}${blendAccentActive ? `,
+    "layout": "${fld.layout}"${blendAccentActive ? `,
     "blend_secondary_palette": "dominant + accent colours of the SECONDARY style ONLY, comma-separated, NO subject/room/camera words",
     "blend_secondary_materials": "key materials & finishes of the SECONDARY style ONLY, comma-separated",
     "blend_secondary_lighting": "lighting type, direction & colour temperature characteristic of the SECONDARY style ONLY",
@@ -1840,7 +1738,7 @@ Return ONLY a valid JSON object, no markdown/backticks, with this exact shape:
 }
 
 Rules:
-- "analysis" values and "prompt" MUST be in English. Fill EVERY analysis key shown above.${mjBlend ? " For \"blend_primary_keywords\" / \"blend_secondary_keywords\", keep each style's descriptors SEPARATE (do NOT merge them); these two sets feed the weighted :: parts of the Midjourney prompt." : ""}${blendAccentActive ? " Fill the \"blend_secondary_*\" fields as a COMPLETE parallel analysis of the SECONDARY style and keep them SEPARATE from the main fields (do NOT merge) — the two symmetric sets are mixed at prompt-build time per the BLEND COMPOSITION rule in the prompt instruction." : ""}
+- "analysis" values and "prompt" MUST be in English. Fill EVERY analysis key shown above.${blendAccentActive ? " Fill the \"blend_secondary_*\" fields as a COMPLETE parallel analysis of the SECONDARY style and keep them SEPARATE from the main fields (do NOT merge) — the two symmetric sets are mixed at prompt-build time per the BLEND COMPOSITION rule in the prompt instruction." : ""}
 - ${hasModel ? "Viewpoint & layout come from the MODEL image." : "Viewpoint is neutral."} Style comes from the target style source above. Emphasize photorealistic quality (global illumination, PBR materials, accurate shadows). Do not invent elements off-style.
 - Even if an image is low-res, blurry, dark, or a rough sketch/clay model, still infer the design and fill EVERY field with your best interpretation — never refuse or ask for a better image.
 - Output the complete JSON only, nothing outside it.`;
@@ -1932,15 +1830,11 @@ Rules:
 
     const hasModel = !!modelImg;
     const allKeys = [...STYLE_KEYS.map(([k]) => k), ...MODEL_KEYS.map(([k]) => k)];
-    // MJ + blend: kèm 2 field keyword riêng để PART 2/PART 3 của chuỗi :: lấy
-    // đúng nguồn analysis (đã chỉnh tay), không bị kéo về brief tĩnh.
-    const mjBlend = platform === "midjourney" && blendMode && !styleImg && !!stylePreset && !!styleB && styleB !== stylePreset;
-    if (mjBlend) allKeys.push(...MJ_BLEND_KEYS.map(([k]) => k));
     // (v30) gpt-image BLEND: kho accent style PHỤ vào payload để compose theo
     // ratio HIỆN TẠI (effectivePlatformGuide đã chèn blendComposeClause). Pool
     // nằm trong analysis nên kéo slider rồi rebuild là re-allocate được ngay.
     const blendOn = blendMode && !styleImg && !!stylePreset && !!styleB && styleB !== stylePreset;
-    if (blendOn && !mjBlend) allKeys.push(...BLEND_SECONDARY_KEYS.map(([k]) => k));
+    if (blendOn) allKeys.push(...BLEND_SECONDARY_KEYS.map(([k]) => k));
     const enPayload = {};
     allKeys.forEach((k) => { enPayload[k] = analysis[k] || ""; });
 
@@ -1967,7 +1861,7 @@ Rules:
 
     // (v31) Khi blend: nhắc sonnet rằng các field "blend_secondary_*" là bộ phân
     // tích ĐẦY ĐỦ SONG SONG của style phụ -> trộn theo BLEND COMPOSITION trong format.
-    const blendNote = (blendOn && !mjBlend)
+    const blendNote = blendOn
       ? ` The "blend_secondary_*" fields are a COMPLETE parallel analysis of the SECONDARY style (its own palette, materials, lighting, mood, furniture, textures), kept separate from the main PRIMARY fields. Mix the two symmetric sets EXACTLY as directed by the BLEND COMPOSITION rule in the format instruction below.`
       : "";
 
@@ -2143,7 +2037,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     const arLbl = h.params?.aspectRatio || "—";
 
     // Map key analysis -> nhãn tiếng Việt (gộp cả STYLE_KEYS lẫn MODEL_KEYS).
-    const labelMap = Object.fromEntries([...STYLE_KEYS, ...MODEL_KEYS, ...MJ_BLEND_KEYS, ...BLEND_SECONDARY_KEYS]);
+    const labelMap = Object.fromEntries([...STYLE_KEYS, ...MODEL_KEYS, ...BLEND_SECONDARY_KEYS]);
 
     // (v30.1) Gom phân tích thành ĐÚNG các section + banner như app, cùng thứ tự.
     // Section blend chỉ hiện khi snapshot thật sự có key đó. Ghi chú mirror app
@@ -2164,14 +2058,13 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       hasKeys(keys)
         ? `<h2 class="sec">${escapeHtml(banner)}</h2>${note ? `<p class="note">${escapeHtml(note)}</p>` : ""}${fieldsOf(keys)}`
         : "";
-    const knownKeys = new Set([...STYLE_KEYS, ...MODEL_KEYS, ...MJ_BLEND_KEYS, ...BLEND_SECONDARY_KEYS].map(([k]) => k));
+    const knownKeys = new Set([...STYLE_KEYS, ...MODEL_KEYS, ...BLEND_SECONDARY_KEYS].map(([k]) => k));
     const otherKeys = Object.keys(A)
       .filter((k) => !knownKeys.has(k) && String(A[k] ?? "").trim() !== "")
       .map((k) => [k, labelMap[k] || k.replace(/_/g, " ")]);
     const grouped =
       section(STYLE_KEYS, "Nội Dung Phân Tích", "") +
       section(MODEL_KEYS, "Góc nhìn & bố cục (giữ theo model)", "") +
-      section(MJ_BLEND_KEYS, "Từ khóa trộn cho Midjourney (::)", "Mỗi bộ là từ khóa của một phong cách, giữ riêng (không hòa) để trọng số :: điều khiển tỷ lệ.") +
       section(BLEND_SECONDARY_KEYS, "Phân tích style phụ (blend)", "Bộ phân tích đầy đủ của style phụ (palette, ánh sáng, mood, vật liệu...), giữ riêng song song bộ chính. Tỷ lệ trộn quyết định mức nghiêng giữa hai style.") +
       (otherKeys.length ? `<h2 class="sec">Khác</h2>${fieldsOf(otherKeys)}` : "");
     const analysisHtml = (h.analysis && grouped)
@@ -2351,15 +2244,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   }
 
   const hasModel = !!modelImg;
-  // MJ image-reference mode: chọn Midjourney + có ảnh MODEL -> Trục 1 điều
-  // khiển image weight (--iw) thay vì khóa hình học kiểu Nano Banana.
-  const mjImageRef = platform === "midjourney" && hasModel;
-  // MJ + blend đang áp đủ 2 preset (không ảnh STYLE): khi đó analysis mang thêm
-  // 2 field keyword riêng (MJ_BLEND_KEYS) -> render + so sánh pendingChanges.
-  const mjBlendNow = platform === "midjourney" && blendMode && !styleImg && !!stylePreset && !!styleB && styleB !== stylePreset;
   // (v30) gpt-image BLEND đang áp đủ 2 preset (không ảnh STYLE): analysis mang
   // thêm field kho accent (BLEND_SECONDARY_KEYS) -> render editor + so sánh pending.
-  const blendAccentNow = blendMode && !styleImg && !!stylePreset && !!styleB && styleB !== stylePreset && !mjBlendNow;
+  const blendAccentNow = blendMode && !styleImg && !!stylePreset && !!styleB && styleB !== stylePreset;
   const canAnalyze = (styleImg || stylePreset) && status !== "analyzing";
 
   // Cụm EN loại không gian hiện hành (rỗng = không áp). Dùng cho instruction
@@ -2392,7 +2279,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     // Trục 1 nay luôn có tác dụng (có model = khóa theo model; không model =
     // kỷ luật không gian), nên đổi mức luôn được ghi nhận.
     if (snapshot.geometry !== geometry)
-      pendingChanges.push({ key: "geometry", label: mjImageRef ? "Image weight (--iw)" : hasModel ? "Khóa hình học" : "Kỷ luật không gian", from: GEOMETRY_LEVELS[snapshot.geometry]?.label, to: GEOMETRY_LEVELS[geometry]?.label });
+      pendingChanges.push({ key: "geometry", label: hasModel ? "Khóa hình học" : "Kỷ luật không gian", from: GEOMETRY_LEVELS[snapshot.geometry]?.label, to: GEOMETRY_LEVELS[geometry]?.label });
     if (snapshot.styleIntensity !== styleIntensity)
       pendingChanges.push({ key: "intensity", label: "Độ mạnh áp style", from: STYLE_INTENSITY_LEVELS[snapshot.styleIntensity]?.short, to: STYLE_INTENSITY_LEVELS[styleIntensity]?.short });
     if (snapshot.negativePrompt !== negativePrompt)
@@ -2406,8 +2293,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   // thị mỗi mục trên một dòng (vd "Phân tích · Phong cách: đã sửa tay"),
   // thay vì gộp tất cả vào một dòng mô tả dài.
   if (snapshot && snapshot.analysis && analysis) {
-    const cmpKeys = mjBlendNow ? [...STYLE_KEYS, ...MODEL_KEYS, ...MJ_BLEND_KEYS]
-      : blendAccentNow ? [...STYLE_KEYS, ...MODEL_KEYS, ...BLEND_SECONDARY_KEYS]
+    const cmpKeys = blendAccentNow ? [...STYLE_KEYS, ...MODEL_KEYS, ...BLEND_SECONDARY_KEYS]
       : [...STYLE_KEYS, ...MODEL_KEYS];
     cmpKeys.forEach(([k, label]) => {
       if ((analysis[k] || "") !== (snapshot.analysis[k] || ""))
@@ -3773,7 +3659,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 style={{ background: C.panel, border: `1px solid ${C.line}` }}
               >
                 <p className="text-xs font-bold uppercase tracking-[0.14em] inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
-                  <Move3d className="w-4 h-4" /> {mjImageRef ? "Image weight (--iw)" : hasModel ? "Khóa hình học" : "Kỷ luật không gian"}
+                  <Move3d className="w-4 h-4" /> {hasModel ? "Khóa hình học" : "Kỷ luật không gian"}
                 </p>
                 {hasModel ? (
                   /* ===== BẢNG TÍCH HỢP: hàng tiêu đề = nút chọn mức, thân = ma trận
@@ -3817,7 +3703,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                     ))}
                   </div>
                 ) : (
-                  /* ===== Không có MODEL / Midjourney image-ref: chỉ nút chọn mức ===== */
+                  /* ===== Không có MODEL: chỉ nút chọn mức ===== */
                   <div className="grid grid-cols-4 gap-1.5 mt-4">
                     {GEOMETRY_LEVELS.map((lv) => {
                       const on = geometry === lv.value;
@@ -3828,20 +3714,15 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                           className="rounded-lg px-1.5 py-2 text-center transition-all"
                           style={{ ...(on ? activeBtn : idleBtn), cursor: "pointer" }}
                         >
-                          <div className="text-[11px] font-bold" style={{ color: on ? C.onAccent : C.accentSoft }}>{(!mjImageRef && !hasModel) ? lv.shortNoModel : lv.short}</div>
-                          <div className="text-[10px] leading-tight mt-0.5" style={{ color: on ? C.onAccent : C.textDim }}>{(!mjImageRef && !hasModel) ? lv.labelNoModel : lv.label}</div>
+                          <div className="text-[11px] font-bold" style={{ color: on ? C.onAccent : C.accentSoft }}>{!hasModel ? lv.shortNoModel : lv.short}</div>
+                          <div className="text-[10px] leading-tight mt-0.5" style={{ color: on ? C.onAccent : C.textDim }}>{!hasModel ? lv.labelNoModel : lv.label}</div>
                         </button>
                       );
                     })}
                   </div>
                 )}
 
-                {mjImageRef ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.accentSoft }}>
-                    <ImageIcon className="w-3.5 h-3.5 shrink-0" />
-                    Midjourney: ảnh MODEL thành image-prompt, ảnh STYLE thành --sref. Trục này chỉnh --iw (độ bám ảnh MODEL).
-                  </div>
-                ) : !hasModel && (
+                {!hasModel && (
                   <div className="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: C.panel2, border: `1px dashed ${C.line}`, color: C.accentSoft }}>
                     <Box className="w-3.5 h-3.5 shrink-0" />
                     Nạp ảnh MODEL để chuyển sang khóa hình học theo model.
@@ -3850,7 +3731,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
                 {/* MÔ TẢ mức đang chọn — dời xuống ĐÁY banner */}
                 <p className="mt-3.5 text-xs leading-relaxed" style={{ color: C.textDim }}>
-                  {mjImageRef ? GEOMETRY_LEVELS[geometry]?.descMJ : hasModel ? (sceneType === "exterior" ? (GEOMETRY_LEVELS[geometry]?.descExt || GEOMETRY_LEVELS[geometry]?.desc) : GEOMETRY_LEVELS[geometry]?.desc) : GEOMETRY_LEVELS[geometry]?.descNoModel}
+                  {hasModel ? (sceneType === "exterior" ? (GEOMETRY_LEVELS[geometry]?.descExt || GEOMETRY_LEVELS[geometry]?.desc) : GEOMETRY_LEVELS[geometry]?.desc) : GEOMETRY_LEVELS[geometry]?.descNoModel}
                 </p>
               </div>
 
@@ -3935,24 +3816,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                         <AnalysisRow key={key} k={key} label={exLabel(key, label)} i={i} enValue={analysis[key] || ""} onChangeEn={handleChangeEn} />
                       ))}
                     </div>
-
-                    {/* MJ + BLEND: 2 bộ keyword TÁCH RIÊNG nuôi PART 2/PART 3 của
-                        chuỗi ::. Sửa ở đây sẽ chảy thẳng vào prompt khi "Cập nhật". */}
-                    {mjBlendNow && (analysis.blend_primary_keywords != null || analysis.blend_secondary_keywords != null) && (
-                      <>
-                        <h2 className="text-base mt-6 mb-3 flex items-center gap-2 font-bold tracking-tight" style={{ color: C.text }}>
-                          <Shuffle className="w-4 h-4" style={{ color: C.accent }} /> Từ khóa trộn cho Midjourney (::)
-                        </h2>
-                        <p className="text-xs mb-2 -mt-1.5" style={{ color: C.textDim }}>
-                          Mỗi bộ là từ khóa của <strong>một</strong> phong cách, giữ riêng (không hòa) để trọng số <span style={{ fontFamily: MONO }}>::</span> điều khiển tỷ lệ. Sửa ở đây sẽ vào thẳng prompt MJ.
-                        </p>
-                        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
-                          {MJ_BLEND_KEYS.map(([key, label], i) => (
-                            <AnalysisRow key={key} k={key} label={label} i={i} enValue={analysis[key] || ""} onChangeEn={handleChangeEn} />
-                          ))}
-                        </div>
-                      </>
-                    )}
 
                     {/* (v30) gpt-image + BLEND: kho điểm nhấn style PHỤ, giữ
                         riêng để ratio điều khiển SỐ accent được inject. Sửa tay
