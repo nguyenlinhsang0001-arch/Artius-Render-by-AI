@@ -1254,6 +1254,20 @@ export default function InteriorPromptAgent() {
   // Trình xem đa góc ĐỘC LẬP (gallery) — chỉ số ảnh đang xem trong danh sách
   // ảnh đa góc đã xong; null = đóng. Tách hẳn khỏi viewer ảnh AI (genImg).
   const [mvGalleryIdx, setMvGalleryIdx] = useState(null);
+  // ===== KÊ NỘI THẤT VÀO GÓC PHÒNG TRỐNG — workflow chính xác hình học:
+  // emptyShots: ảnh phòng TRỐNG (render thật, đúng hình học) cần kê nội thất
+  // { uid, mediaType, data, preview, name }. mvLayout: mô tả BỐ CỤC nội thất do
+  // Claude trích từ ảnh render đầu (genImg), nhồi vào prompt để đặt đúng vị trí.
+  const [emptyShots, setEmptyShots] = useState([]);
+  const [mvLayout, setMvLayout] = useState(null);
+  const [mvLayoutBusy, setMvLayoutBusy] = useState(false);
+  const emptyShotRef = useRef(null);
+  // Ảnh AI NẠP NGOÀI (từ file đã lưu phiên trước) làm nguồn cho đa góc — KHÔNG
+  // đụng tới canvas kết quả chính. mvRef = ưu tiên ảnh nạp ngoài, nếu không thì
+  // genImg vừa render trong phiên.
+  const [mvImported, setMvImported] = useState(null);
+  const mvImportRef = useRef(null);
+  const mvRef = mvImported || genImg;
 
   // =============================================================
   // THANH TIẾN TRÌNH (progress bar) — hiệu ứng "load game", CHẠY THUẦN
@@ -1377,8 +1391,11 @@ export default function InteriorPromptAgent() {
     // Khôi phục LỊCH SỬ đa góc của phiên bản này (nếu có) -> pane "Đa góc" hiện lại.
     setMultiViews([]);
     setMvGalleryIdx(null);
+    setEmptyShots([]);
+    setMvLayout(null);
+    setMvImported(null); // khôi phục từ lịch sử -> dùng genImg của entry, bỏ ảnh nạp ngoài
     setMvAll(Array.isArray(entry.multiView)
-      ? entry.multiView.map((m, i) => ({ uid: `mv-h${i}-${Date.now()}`, id: m.id, label: m.label, img: m.img }))
+      ? entry.multiView.map((m, i) => ({ uid: `mv-h${i}-${Date.now()}`, kind: m.kind, emptyUid: m.emptyUid, id: m.id, label: m.label, img: m.img }))
       : []);
   }
 
@@ -2009,6 +2026,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     setMultiViews([]);
     setMvAll([]);
     setMvGalleryIdx(null);
+    setEmptyShots([]);
+    setMvLayout(null);
+    setMvImported(null); // render mới -> ưu tiên ảnh vừa render, bỏ ảnh nạp ngoài
     setComparePos(50); // tạo ảnh mới -> đưa thanh so sánh về giữa
 
     // Mọi mức (0–3) đều render bằng images/edits: gửi MODEL (nền/geometry) + STYLE
@@ -2101,9 +2121,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   }
 
   async function generateMultiview() {
-    if (!genImg || mvBusy) return;
+    if (!mvRef || mvBusy) return;
     // Nén ảnh nguồn trước khi gửi để tránh HTTP 413 (payload quá lớn).
-    const base = await downscaleDataUri(genImg, 1024, 0.85);
+    const base = await downscaleDataUri(mvRef, 1024, 0.85);
     if (!base) { setGenError("Ảnh kết quả không hợp lệ để tạo đa góc."); return; }
     const angles = MULTIVIEW_ANGLES.filter((a) => mvSel.has(a.id));
     if (angles.length < 1) return; // cần ít nhất 1 góc
@@ -2115,8 +2135,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
     // Tích lũy vào LỊCH SỬ đa góc (mvAll) — seed từ những ảnh đã có để batch mới
     // KHÔNG xóa batch cũ. Đồng thời gắn dồn vào ĐÚNG entry lịch sử của ảnh AI
-    // nguồn (so khớp genImg) để xuất HTML có kèm tất cả.
-    const srcImg = genImg;
+    // nguồn (so khớp mvRef) để xuất HTML có kèm tất cả.
+    const srcImg = mvRef;
     const acc = mvAll.slice();
     let uidSeq = Date.now();
     const attachToHistory = () => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: acc.map(({ uid, ...m }) => m) } : e));
@@ -2169,11 +2189,11 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   // Tạo lại / tạo bù MỘT góc riêng lẻ. replaceUid != null -> thay ảnh của ô đó
   // trong mvAll; nếu không -> thêm ảnh mới (dùng khi tạo lại từ ô lỗi).
   async function generateOne(angle, replaceUid) {
-    if (!genImg || !angle) return;
+    if (!mvRef || !angle) return;
     const key = replaceUid || `new-${angle.id}`;
     if (mvRetrying.has(key)) return;
     setMvRetrying((s) => { const n = new Set(s); n.add(key); return n; });
-    const srcImg = genImg;
+    const srcImg = mvRef;
     const syncHistory = (list) => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: list.map(({ uid, ...m }) => m) } : e));
     try {
       const base = await downscaleDataUri(srcImg, 1024, 0.85);
@@ -2219,8 +2239,240 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       setMvRetrying((s) => { const n = new Set(s); n.delete(key); return n; });
     }
   }
-  // Tạo lại 1 ảnh đã có trong lịch sử đa góc (thay tại chỗ).
-  const retryView = (v) => generateOne(MULTIVIEW_ANGLES.find((a) => a.id === v.id), v.uid);
+  // ============================================================
+  // KÊ NỘI THẤT VÀO GÓC PHÒNG TRỐNG (workflow chính xác hình học).
+  // ============================================================
+  // Đọc 1 file ảnh phòng trống -> nén về JPEG (geometry reference, nhẹ payload).
+  function readEmptyFile(file) {
+    return new Promise((resolve) => {
+      if (!file || !file.type.startsWith("image/")) { resolve(null); return; }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const parts = await downscaleDataUri(reader.result, 1280, 0.85);
+        if (!parts) { resolve(null); return; }
+        resolve({ ...parts, preview: `data:${parts.mediaType};base64,${parts.data}` });
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }
+  async function addEmptyShots(fileList) {
+    const files = Array.from(fileList || []);
+    for (const f of files) {
+      const shot = await readEmptyFile(f);
+      if (shot) setEmptyShots((prev) => [...prev, { uid: `es-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, name: `Góc ${prev.length + 1}`, ...shot }]);
+    }
+  }
+  const removeEmptyShot = (uid) => setEmptyShots((prev) => prev.filter((s) => s.uid !== uid));
+
+  // Nạp 1 ảnh AI có sẵn (file PNG/JPG đã lưu) làm NGUỒN cho đa góc. Đặt vào
+  // mvImported -> mvRef trỏ tới ảnh này; reset bộ đa góc cũ để bắt đầu sạch.
+  function importMvImage(file) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setGenError("Vui lòng chọn file ảnh (PNG/JPG)."); setTimeout(() => setGenError(null), 2500); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setMvImported(reader.result);   // data URI đầy đủ (nén lúc gửi)
+      setMvAll([]); setMultiViews([]); setEmptyShots([]); setMvLayout(null); setMvGalleryIdx(null);
+    };
+    reader.onerror = () => { setGenError("Không đọc được ảnh."); setTimeout(() => setGenError(null), 2500); };
+    reader.readAsDataURL(file);
+  }
+  const clearMvImported = () => { setMvImported(null); setMvAll([]); setMultiViews([]); setEmptyShots([]); setMvLayout(null); setMvGalleryIdx(null); };
+
+  // Gọi Claude (vision) MỘT lần để mô tả BỐ CỤC nội thất từ ảnh render đầu, neo
+  // theo TƯỜNG/ĐẶC ĐIỂM kiến trúc (bất biến theo góc nhìn). Cache vào mvLayout.
+  async function describeLayout() {
+    if (mvLayout) return mvLayout;
+    if (!mvRef) return "";
+    setMvLayoutBusy(true);
+    try {
+      const ref = await downscaleDataUri(mvRef, 1024, 0.85);
+      if (!ref) return "";
+      const instruction = (mvRenderScene === "exterior")
+        ? "Look at this architectural building exterior render. Describe ONLY the FACADE composition and materials, in 3-6 short English sentences. Anchor EACH element to a specific part of the building (e.g. 'the ground floor is clad in stone up to the first-floor line', 'vertical timber battens run across the upper storey', 'large floor-to-ceiling glazing sits on the left bay', 'a flat cantilevered roof caps the top', 'the entrance is a recessed portal at the centre'). Use storeys, bays, openings, roofline and massing as anchors so the description stays valid from ANY camera angle. Do NOT use image-left/right or vague adjectives — only material + position relative to the building structure. Output plain text only."
+        : "Look at this furnished interior render. Describe ONLY the spatial LAYOUT of the furniture and decor, in 3-6 short English sentences. Anchor EACH major piece to a specific WALL or architectural feature (e.g. 'the bed is centred against the wood-slatted feature wall', 'a tall plant stands in the corner beside the glass door / window', 'a cabinet and round mirror are on the wall to the right of the bed', 'a rattan armchair sits near the window'). Use the room's walls, windows and doors as anchors so the description stays valid from ANY camera angle. Do NOT use image-left/right or styling adjectives — only positions relative to architecture. Output plain text only.";
+      const content = [
+        { type: "image", source: { type: "base64", media_type: ref.mediaType, data: ref.data } },
+        { type: "text", text: instruction },
+      ];
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 600, messages: [{ role: "user", content }] }),
+      });
+      const raw = await resp.text();
+      if (resp.status === 401) { logout(); return ""; }
+      if (!resp.ok) return "";
+      const data = JSON.parse(raw);
+      const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+      if (text) { setMvLayout(text); return text; }
+      return "";
+    } catch (err) { console.error(err); return ""; }
+    finally { setMvLayoutBusy(false); }
+  }
+
+  // Prompt KÊ NỘI THẤT: ảnh 1 = phòng trống (giữ hình học), ảnh 2 = render đã có
+  // (tham chiếu nội thất/phong cách); layout = mô tả vị trí neo theo kiến trúc.
+  function mvFurnishPrompt(layout) {
+    if (mvRenderScene === "exterior") {
+      return (
+        "You are given TWO images of the SAME building. IMAGE 1 is the BARE, unstyled building shell (a plain " +
+        "white/grey massing render) from one camera angle — treat it as the EXACT base: keep its massing, " +
+        "storey heights, roofline, every wall plane, window and door opening, the camera viewpoint and " +
+        "perspective COMPLETELY UNCHANGED. IMAGE 2 is the same building with the target architectural style " +
+        "applied — use it ONLY as the reference for WHICH facade materials, cladding, colours, fenestration " +
+        "treatment, exterior fixtures and lighting to apply and exactly how they look. " +
+        "Apply onto IMAGE 1 the SAME facade materials, cladding, palette, detailing, landscaping and lighting " +
+        "mood as IMAGE 2, rendered in the same photorealistic style. " +
+        (layout ? ("Follow this facade description, anchored to the building structure: " + layout + " ") : "") +
+        "Respect IMAGE 1's geometry ABSOLUTELY: do NOT change the massing, storey count, rooflines, wall " +
+        "planes, or the position/size of any window or door, and do NOT change the camera angle, framing or " +
+        "perspective — ONLY apply surface materials and finishing so the building looks fully designed from " +
+        "THIS exact viewpoint. Keep vertical lines straight and the perspective undistorted. Photorealistic " +
+        "architectural visualization, visually consistent with IMAGE 2."
+      );
+    }
+    return (
+      "You are given TWO images of the SAME room. IMAGE 1 is the EMPTY, unfurnished room — treat it as " +
+      "the EXACT base: keep its architecture, walls, windows, doors, floor, ceiling, camera viewpoint and " +
+      "perspective COMPLETELY UNCHANGED. IMAGE 2 is the same room already furnished in the target interior " +
+      "design — use it ONLY as the reference for WHICH furniture, materials, colours, textiles, lighting and " +
+      "decor to add and exactly how they look. " +
+      "Furnish IMAGE 1 with the SAME furniture pieces, materials, palette, plants, lighting fixtures and decor " +
+      "as IMAGE 2, rendered in the same photorealistic style and lighting mood. " +
+      (layout ? ("Place each piece in its correct real-world position according to this layout, anchored to the " +
+        "room's architecture: " + layout + " ") : "") +
+      "Respect IMAGE 1's geometry ABSOLUTELY: do NOT move, add or remove any wall, window or door, and do NOT " +
+      "change the camera angle, framing or perspective — ONLY add the furnishings so the room looks fully " +
+      "designed from THIS exact viewpoint. Keep vertical lines straight and the perspective undistorted. " +
+      "Photorealistic architectural visualization, visually consistent with IMAGE 2."
+    );
+  }
+
+  // Kê nội thất cho MỘT ảnh phòng trống. replaceUid -> thay tại chỗ; layout có
+  // thể truyền sẵn, nếu không sẽ tự trích.
+  async function furnishOne(shot, layout, replaceUid) {
+    if (!mvRef || !shot) return;
+    const key = replaceUid || `empty-${shot.uid}`;
+    if (mvRetrying.has(key)) return;
+    setMvRetrying((s) => { const n = new Set(s); n.add(key); return n; });
+    const srcImg = mvRef;
+    const syncHistory = (list) => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: list.map(({ uid, ...m }) => m) } : e));
+    try {
+      const lay = (layout != null) ? layout : await describeLayout();
+      const ref = await downscaleDataUri(srcImg, 1024, 0.85);
+      if (!ref) throw new Error("no ref");
+      const response = await fetch(IMAGE_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
+        body: JSON.stringify({
+          model: "gpt-image-2",
+          prompt: mvFurnishPrompt(lay),
+          images: [{ data: shot.data, mediaType: shot.mediaType }, { data: ref.data, mediaType: ref.mediaType }],
+          size: "auto",
+          quality: "medium",
+          mode: "edit",
+        }),
+      });
+      let raw = ""; try { raw = await response.text(); } catch {}
+      if (response.status === 401) { logout(); return; }
+      if (!response.ok) {
+        const friendly = /billing_hard_limit_reached|insufficient_quota|exceeded your current quota/i.test(raw)
+          ? "Hết token tạo ảnh" : `Lỗi HTTP ${response.status}`;
+        setGenError(friendly); setTimeout(() => setGenError(null), 2500);
+        return;
+      }
+      let data = null; try { data = JSON.parse(raw); } catch {}
+      const b64 = data?.b64 || data?.data?.[0]?.b64_json || null;
+      if (!b64) { setGenError("Proxy không trả ảnh."); setTimeout(() => setGenError(null), 2500); return; }
+      const uri = `data:image/png;base64,${b64}`;
+      setMvAll((prev) => {
+        const next = (replaceUid && prev.some((v) => v.uid === replaceUid))
+          ? prev.map((v) => v.uid === replaceUid ? { ...v, img: uri } : v)
+          : [...prev, { uid: `mv-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, kind: "empty", emptyUid: shot.uid, id: shot.uid, label: shot.name, img: uri }];
+        syncHistory(next);
+        return next;
+      });
+      if (!replaceUid) setMultiViews((prev) => prev.filter((v) => v.id !== shot.uid));
+      bumpCount("images");
+    } catch (err) {
+      console.error(err);
+      setGenError("Lỗi kết nối khi kê nội thất."); setTimeout(() => setGenError(null), 2500);
+    } finally {
+      setMvRetrying((s) => { const n = new Set(s); n.delete(key); return n; });
+    }
+  }
+
+  // Kê nội thất cho TẤT CẢ ảnh phòng trống chưa có kết quả (chạy tuần tự).
+  async function furnishEmptyShots() {
+    if (!mvRef || mvBusy) return;
+    const shots = emptyShots.filter((s) => !mvAll.some((v) => v.kind === "empty" && v.emptyUid === s.uid));
+    if (!shots.length) return;
+    setMvBusy(true);
+    setMvGalleryIdx(null);
+    setMultiViews(shots.map((s) => ({ id: s.uid, label: s.name, status: "pending", img: null, error: null })));
+    const layout = await describeLayout();
+    const srcImg = mvRef;
+    const acc = mvAll.slice();
+    const syncHistory = () => setHistory((hs) => hs.map((e) => e.genImg === srcImg ? { ...e, multiView: acc.map(({ uid, ...m }) => m) } : e));
+    const ref = await downscaleDataUri(srcImg, 1024, 0.85);
+    for (const shot of shots) {
+      setMultiViews((prev) => prev.map((v) => v.id === shot.uid ? { ...v, status: "generating" } : v));
+      try {
+        const response = await fetch(IMAGE_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken()}` },
+          body: JSON.stringify({
+            model: "gpt-image-2",
+            prompt: mvFurnishPrompt(layout),
+            images: [{ data: shot.data, mediaType: shot.mediaType }, { data: ref.data, mediaType: ref.mediaType }],
+            size: "auto",
+            quality: "medium",
+            mode: "edit",
+          }),
+        });
+        let raw = ""; try { raw = await response.text(); } catch {}
+        if (response.status === 401) { logout(); setMvBusy(false); return; }
+        if (!response.ok) {
+          const friendly = /billing_hard_limit_reached|insufficient_quota|exceeded your current quota/i.test(raw)
+            ? "Hết token tạo ảnh" : `Lỗi HTTP ${response.status}`;
+          setMultiViews((prev) => prev.map((v) => v.id === shot.uid ? { ...v, status: "error", error: friendly } : v));
+          continue;
+        }
+        let data = null; try { data = JSON.parse(raw); } catch {}
+        const b64 = data?.b64 || data?.data?.[0]?.b64_json || null;
+        if (!b64) { setMultiViews((prev) => prev.map((v) => v.id === shot.uid ? { ...v, status: "error", error: "Proxy không trả ảnh" } : v)); continue; }
+        const uri = `data:image/png;base64,${b64}`;
+        setMultiViews((prev) => prev.map((v) => v.id === shot.uid ? { ...v, status: "done", img: uri } : v));
+        acc.push({ uid: `mv-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, kind: "empty", emptyUid: shot.uid, id: shot.uid, label: shot.name, img: uri });
+        setMvAll(acc.slice());
+        syncHistory();
+        bumpCount("images");
+      } catch (err) {
+        console.error(err);
+        setMultiViews((prev) => prev.map((v) => v.id === shot.uid ? { ...v, status: "error", error: "Lỗi kết nối" } : v));
+      }
+    }
+    setMvBusy(false);
+  }
+
+  // Tạo lại 1 ảnh trong lịch sử đa góc (thay tại chỗ) — phân loại theo nguồn.
+  const retryView = (v) => {
+    if (v.kind === "empty") {
+      const shot = emptyShots.find((s) => s.uid === v.emptyUid);
+      if (!shot) { setGenError("Ảnh phòng trống gốc không còn (đã reset phiên). Nạp lại để tạo."); setTimeout(() => setGenError(null), 2500); return; }
+      return furnishOne(shot, mvLayout, v.uid);
+    }
+    return generateOne(MULTIVIEW_ANGLES.find((a) => a.id === v.id), v.uid);
+  };
+  // Tạo lại ô lỗi trong batch đang chạy (preset góc hoặc ảnh phòng trống).
+  const retryPending = (v) => {
+    const angle = MULTIVIEW_ANGLES.find((a) => a.id === v.id);
+    if (angle) return generateOne(angle, null);
+    const shot = emptyShots.find((s) => s.uid === v.id);
+    if (shot) return furnishOne(shot, mvLayout, null);
+  };
 
   // Escape ký tự đặc biệt để chèn an toàn vào HTML (tránh vỡ layout / XSS).
   function escapeHtml(v) {
@@ -2794,7 +3046,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       aria-label="Điều hướng"
     >
       {navRailItems.map(({ Icon, label, key }) => {
-        const locked = (key === "advanced" && !analysis) || (key === "multiview" && !genImg) || (key === "history" && history.length === 0);
+        const locked = (key === "advanced" && !analysis) || (key === "history" && history.length === 0);
         const active = navSection === key && !locked;
         return (
           <button
@@ -2988,6 +3240,12 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   const mvDoneCount = mvAll.length;
   // Các ô của batch ĐANG chạy còn dang dở (chưa "done") -> hiện tiến trình.
   const mvPending = multiViews.filter((v) => v.status !== "done");
+  // Ảnh phòng trống/khối nhà CHƯA có kết quả -> còn cần tạo.
+  const mvEmptyPending = emptyShots.filter((s) => !mvAll.some((v) => v.kind === "empty" && v.emptyUid === s.uid)).length;
+  // Chế độ Nội thất/Kiến trúc KHÓA theo lúc render ảnh AI hiện tại (đọc từ lịch
+  // sử), KHÔNG theo công tắc hiện tại -> workflow đa góc luôn đúng bộ prompt.
+  const mvRenderScene = (history.find((h) => h.genImg === mvRef)?.params?.sceneType) || sceneType;
+  const mvExt = mvRenderScene === "exterior";
   const openMvGallery = (uid) => {
     const i = mvDoneList.findIndex((x) => x.uid === uid);
     setMvGalleryIdx(i >= 0 ? i : 0);
@@ -3004,27 +3262,108 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
         <h2 className="text-base font-bold tracking-tight" style={{ color: C.text }}>Tạo đa góc nhìn</h2>
       </div>
 
-      {!genImg ? (
+      {/* input ẩn dùng chung cho nút nạp ảnh AI có sẵn */}
+      <input ref={mvImportRef} type="file" accept="image/*" className="hidden" onChange={(e) => { importMvImage(e.target.files?.[0]); e.target.value = ""; }} />
+
+      {!mvRef ? (
         <div className="rounded-2xl p-4 text-sm leading-relaxed" style={{ background: C.panel, border: `1px dashed ${C.line}`, color: C.textDim }}>
           <ImageIcon className="w-5 h-5 mb-2" style={{ color: C.accentSoft }} />
-          Hãy <strong style={{ color: C.text }}>tạo ảnh render AI</strong> ở bước trước. Khi đã có ảnh kết quả, tính năng này sẽ dựng thêm nhiều góc máy khác từ chính ảnh đó (giữ nguyên thiết kế, chỉ đổi góc nhìn).
+          Hãy <strong style={{ color: C.text }}>tạo ảnh render AI</strong> ở bước trước, hoặc <strong style={{ color: C.text }}>nạp một ảnh AI đã lưu</strong> để làm nguồn tạo đa góc.
+          <button type="button" onClick={() => mvImportRef.current?.click()}
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 text-[13px] font-semibold rounded-xl px-4 py-2.5 transition-colors"
+            style={{ border: `1px solid ${C.accent}`, color: C.onAccent, background: C.accent, cursor: "pointer" }}>
+            <ImageIcon className="w-4 h-4" /> Nạp ảnh AI có sẵn
+          </button>
         </div>
       ) : (
         <>
           <div className="rounded-2xl p-3 mb-3" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
-            <p className="text-xs mb-2 font-semibold uppercase tracking-[0.12em]" style={{ color: C.accentSoft }}>Ảnh nguồn</p>
-            <img src={genImg} alt="Ảnh AI gốc" className="w-full rounded-xl" style={{ maxHeight: 150, objectFit: "cover", border: `1px solid ${C.line}` }} />
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: C.accentSoft }}>Ảnh nguồn{mvImported ? " · nạp ngoài" : ""}</p>
+              <button type="button" disabled={mvBusy} onClick={() => mvImportRef.current?.click()}
+                className="text-[11px] font-semibold rounded-md px-2 py-1 transition-colors"
+                style={{ border: `1px solid ${C.line}`, color: C.textDim, background: "transparent", cursor: mvBusy ? "default" : "pointer" }}>
+                Nạp ảnh khác
+              </button>
+            </div>
+            <img src={mvRef} alt="Ảnh AI nguồn" className="w-full rounded-xl" style={{ maxHeight: 150, objectFit: "cover", border: `1px solid ${C.line}` }} />
             <p className="text-[11px] mt-2 leading-relaxed" style={{ color: C.textDim }}>
-              Các góc mới được dựng từ ảnh này — giữ nguyên vật liệu, đồ đạc, ánh sáng; chỉ đổi vị trí & hướng camera. Cùng tỉ lệ khung <span style={{ fontFamily: MONO }}>{aspectRatio}</span>.
+              Bộ {mvExt ? "vật liệu & facade" : "nội thất & phong cách"} của ảnh này sẽ được áp vào các góc bên dưới.
             </p>
+            {mvImported && (
+              <div className="flex items-center gap-1 mt-2 rounded-lg p-1" style={{ background: C.panel2, border: `1px solid ${C.line}`, width: "fit-content" }}>
+                {[{ v: "interior", l: "Nội thất" }, { v: "exterior", l: "Kiến trúc" }].map((o) => {
+                  const on = mvRenderScene === o.v;
+                  return (
+                    <button key={o.v} type="button" disabled={mvBusy} onClick={() => setSceneType(o.v)}
+                      className="text-[11px] font-semibold rounded-md px-2.5 py-1 transition-colors"
+                      style={{ background: on ? C.accent : "transparent", color: on ? C.onAccent : C.textDim, cursor: mvBusy ? "default" : "pointer" }}>
+                      {o.l}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Chọn góc — tối thiểu 3 */}
+          {/* ===== KÊ NỘI THẤT VÀO GÓC PHÒNG TRỐNG (đề xuất — đúng hình học) ===== */}
+          <div className="rounded-2xl p-3 mb-3" style={{ background: C.panel, border: `1px solid ${C.accent}66` }}>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] mb-1 inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
+              <ImageIcon className="w-3.5 h-3.5" /> {mvExt ? "Áp phong cách vào khối nhà" : "Kê nội thất vào góc phòng trống"}
+            </p>
+            <p className="text-[11px] mb-2 leading-relaxed" style={{ color: C.textDim }}>
+              {mvExt
+                ? (<>Nạp ảnh các GÓC <strong style={{ color: C.text }}>khối nhà thô</strong> (render thật, đúng khối). AI áp đúng vật liệu & facade của ảnh trên vào từng góc — giữ chuẩn khối/cửa, không trôi.</>)
+                : (<>Nạp ảnh các MẶT phòng <strong style={{ color: C.text }}>trống</strong> (render thật, đúng hình học). AI kê đúng nội thất & phong cách của ảnh trên vào từng góc — giữ chuẩn vị trí tường/cửa, không trôi.</>)}
+            </p>
+
+            {emptyShots.length > 0 && (
+              <div className="grid grid-cols-3 gap-1.5 mb-2">
+                {emptyShots.map((s) => (
+                  <div key={s.uid} className="relative rounded-lg overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
+                    <img src={s.preview} alt={s.name} className="w-full" style={{ aspectRatio: "1 / 1", objectFit: "cover" }} />
+                    <button type="button" disabled={mvBusy} onClick={() => removeEmptyShot(s.uid)} title="Xóa"
+                      className="absolute top-1 right-1 inline-flex items-center justify-center rounded-md"
+                      style={{ width: 20, height: 20, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: mvBusy ? "default" : "pointer" }}>
+                      <X className="w-3 h-3" />
+                    </button>
+                    <div className="absolute bottom-0 inset-x-0 text-[9px] text-center py-0.5" style={{ background: "rgba(0,0,0,0.55)", color: "#fff" }}>{s.name}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <input ref={emptyShotRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addEmptyShots(e.target.files); e.target.value = ""; }} />
+            <button type="button" disabled={mvBusy} onClick={() => emptyShotRef.current?.click()}
+              className="w-full rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors"
+              style={{ border: `1px dashed ${C.line}`, color: C.accentSoft, background: C.panel2, cursor: mvBusy ? "default" : "pointer" }}>
+              {mvExt ? "+ Nạp ảnh khối nhà thô" : "+ Nạp ảnh phòng trống"}
+            </button>
+
+            {mvLayoutBusy && (
+              <p className="text-[11px] mt-2 inline-flex items-center gap-1.5" style={{ color: C.accentSoft }}>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {mvExt ? "Đang phân tích facade…" : "Đang phân tích bố cục nội thất…"}
+              </p>
+            )}
+
+            <button type="button" onClick={furnishEmptyShots} disabled={mvBusy || mvEmptyPending === 0}
+              className={`w-full mt-2 inline-flex items-center justify-center gap-2 text-[14px] font-semibold rounded-xl px-4 py-2.5 transition-all ${(mvBusy || mvEmptyPending === 0) ? "" : "ipa-glow"}`}
+              style={{ border: `1px solid ${C.accent}`, color: (mvBusy || mvEmptyPending === 0) ? C.textDim : C.onAccent, background: (mvBusy || mvEmptyPending === 0) ? C.panel2 : C.accent, cursor: (mvBusy || mvEmptyPending === 0) ? "not-allowed" : "pointer" }}>
+              {mvBusy
+                ? (<><Loader2 className="w-5 h-5 animate-spin" /> {mvExt ? "Đang áp phong cách…" : "Đang kê nội thất…"}</>)
+                : (<><ImageIcon className="w-5 h-5" /> {mvExt ? "Áp phong cách cho" : "Kê nội thất cho"} {mvEmptyPending} góc</>)}
+            </button>
+          </div>
+
+          {/* Chọn góc — preset xoay từ 1 ảnh (kém chính xác hình học) */}
           <div className="rounded-2xl p-3 mb-3" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: C.accentSoft }}>Chọn góc nhìn</p>
+              <p className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: C.accentSoft }}>Xoay góc từ 1 ảnh</p>
               <span className="text-[11px]" style={{ color: mvSelCount < 1 ? C.neg : C.textDim, fontFamily: MONO }}>{mvSelCount} đã chọn{mvSelCount < 1 ? " · chọn ≥ 1" : ""}</span>
             </div>
+            <p className="text-[10px] mb-2 -mt-1 leading-snug" style={{ color: C.textFaint }}>
+              Cách cũ: suy góc từ 1 ảnh — nhanh nhưng vị trí/hình học có thể lệch. Ưu tiên dùng "Kê nội thất vào góc phòng trống" ở trên.
+            </p>
             <div className="grid grid-cols-2 gap-1.5">
               {MULTIVIEW_ANGLES.map((a) => {
                 const on = mvSel.has(a.id);
@@ -3058,13 +3397,13 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                 <div key={v.id} className="rounded-xl overflow-hidden flex flex-col" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
                   <div className="relative flex items-center justify-center" style={{ aspectRatio: "1 / 1", background: C.inputBg }}>
                     {v.status === "error" ? (
-                      mvRetrying.has(`new-${v.id}`) ? (
+                      (mvRetrying.has(`new-${v.id}`) || mvRetrying.has(`empty-${v.id}`)) ? (
                         <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.accentSoft }} />
                       ) : (
                         <div className="flex flex-col items-center gap-1.5 px-2 text-center">
                           <AlertCircle className="w-5 h-5" style={{ color: C.neg }} />
                           <span className="text-[10px]" style={{ color: C.neg }}>{v.error || "Lỗi"}</span>
-                          <button type="button" onClick={() => generateOne(MULTIVIEW_ANGLES.find((a) => a.id === v.id), null)}
+                          <button type="button" onClick={() => retryPending(v)}
                             className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-md px-2 py-0.5"
                             style={{ border: `1px solid ${C.accent}`, color: C.accent, background: "transparent", cursor: "pointer" }}>
                             <RefreshCw className="w-3 h-3" /> Tạo lại
