@@ -2248,14 +2248,25 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
       if (!file || !file.type.startsWith("image/")) { resolve(null); return; }
       const reader = new FileReader();
       reader.onload = async () => {
-        const parts = await downscaleDataUri(reader.result, 1280, 0.85);
+        const dataUrl = reader.result;
+        const parts = await downscaleDataUri(dataUrl, 1280, 0.85);
         if (!parts) { resolve(null); return; }
-        resolve({ ...parts, preview: `data:${parts.mediaType};base64,${parts.data}` });
+        // Đọc kích thước gốc để chọn size ảnh đầu ra KHỚP tỉ lệ ảnh phòng trống
+        // (tránh lệch khung khi kê nội thất).
+        const dim = await new Promise((res) => {
+          const im = new Image();
+          im.onload = () => res({ w: im.naturalWidth || 0, h: im.naturalHeight || 0 });
+          im.onerror = () => res({ w: 0, h: 0 });
+          im.src = dataUrl;
+        });
+        resolve({ ...parts, preview: `data:${parts.mediaType};base64,${parts.data}`, w: dim.w, h: dim.h });
       };
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(file);
     });
   }
+  // Size đầu ra gpt-image khớp tỉ lệ ảnh phòng trống (fallback "auto").
+  const mvSizeForShot = (shot) => (shot && shot.w && shot.h) ? (AR_TO_SIZE[suggestAspectRatio(shot.w, shot.h)] || "auto") : "auto";
   async function addEmptyShots(fileList) {
     const files = Array.from(fileList || []);
     for (const f of files) {
@@ -2278,7 +2289,6 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
     reader.onerror = () => { setGenError("Không đọc được ảnh."); setTimeout(() => setGenError(null), 2500); };
     reader.readAsDataURL(file);
   }
-  const clearMvImported = () => { setMvImported(null); setMvAll([]); setMultiViews([]); setEmptyShots([]); setMvLayout(null); setMvGalleryIdx(null); };
 
   // Gọi Claude (vision) MỘT lần để mô tả BỐ CỤC nội thất từ ảnh render đầu, neo
   // theo TƯỜNG/ĐẶC ĐIỂM kiến trúc (bất biến theo góc nhìn). Cache vào mvLayout.
@@ -2370,7 +2380,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
           model: "gpt-image-2",
           prompt: mvFurnishPrompt(lay),
           images: [{ data: shot.data, mediaType: shot.mediaType }, { data: ref.data, mediaType: ref.mediaType }],
-          size: "auto",
+          size: mvSizeForShot(shot),
           quality: "medium",
           mode: "edit",
         }),
@@ -2427,7 +2437,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
             model: "gpt-image-2",
             prompt: mvFurnishPrompt(layout),
             images: [{ data: shot.data, mediaType: shot.mediaType }, { data: ref.data, mediaType: ref.mediaType }],
-            size: "auto",
+            size: mvSizeForShot(shot),
             quality: "medium",
             mode: "edit",
           }),
@@ -2459,6 +2469,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
 
   // Tạo lại 1 ảnh trong lịch sử đa góc (thay tại chỗ) — phân loại theo nguồn.
   const retryView = (v) => {
+    if (mvBusy) return; // tránh đua ghi mvAll với batch đang chạy
     if (v.kind === "empty") {
       const shot = emptyShots.find((s) => s.uid === v.emptyUid);
       if (!shot) { setGenError("Ảnh phòng trống gốc không còn (đã reset phiên). Nạp lại để tạo."); setTimeout(() => setGenError(null), 2500); return; }
@@ -2468,6 +2479,7 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
   };
   // Tạo lại ô lỗi trong batch đang chạy (preset góc hoặc ảnh phòng trống).
   const retryPending = (v) => {
+    if (mvBusy) return; // chỉ cho tạo lại khi batch đã dừng
     const angle = MULTIVIEW_ANGLES.find((a) => a.id === v.id);
     if (angle) return generateOne(angle, null);
     const shot = emptyShots.find((s) => s.uid === v.id);
@@ -3403,9 +3415,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                         <div className="flex flex-col items-center gap-1.5 px-2 text-center">
                           <AlertCircle className="w-5 h-5" style={{ color: C.neg }} />
                           <span className="text-[10px]" style={{ color: C.neg }}>{v.error || "Lỗi"}</span>
-                          <button type="button" onClick={() => retryPending(v)}
+                          <button type="button" disabled={mvBusy} onClick={() => retryPending(v)}
                             className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-md px-2 py-0.5"
-                            style={{ border: `1px solid ${C.accent}`, color: C.accent, background: "transparent", cursor: "pointer" }}>
+                            style={{ border: `1px solid ${C.accent}`, color: C.accent, background: "transparent", cursor: mvBusy ? "default" : "pointer", opacity: mvBusy ? 0.5 : 1 }}>
                             <RefreshCw className="w-3 h-3" /> Tạo lại
                           </button>
                         </div>
@@ -3446,9 +3458,9 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
                         </div>
                       )}
                       <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
-                        <button type="button" disabled={retrying} onClick={(e) => { e.stopPropagation(); retryView(v); }} title="Tạo lại góc này"
+                        <button type="button" disabled={retrying || mvBusy} onClick={(e) => { e.stopPropagation(); retryView(v); }} title="Tạo lại góc này"
                           className="inline-flex items-center justify-center rounded-md"
-                          style={{ width: 26, height: 26, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: retrying ? "default" : "pointer" }}>
+                          style={{ width: 26, height: 26, background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: (retrying || mvBusy) ? "default" : "pointer", opacity: mvBusy && !retrying ? 0.5 : 1 }}>
                           <RefreshCw className={`w-3.5 h-3.5${retrying ? " animate-spin" : ""}`} />
                         </button>
                         <a href={v.img} download={`multiview-${v.id}.png`} onClick={(e) => e.stopPropagation()} title="Tải ảnh"
@@ -4997,8 +5009,8 @@ Return ONLY a valid JSON object (no markdown/backticks): {"prompt": "the English
               <div className="mt-3 flex items-center justify-center gap-3 text-sm" style={{ color: "#fff" }} onClick={(e) => e.stopPropagation()}>
                 <span className="font-semibold">{cur.label}</span>
                 <span style={{ color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>{idx + 1}/{len}</span>
-                <button type="button" disabled={mvRetrying.has(cur.uid)} onClick={() => retryView(cur)} title="Tạo lại góc này"
-                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.35)", color: "#fff", cursor: mvRetrying.has(cur.uid) ? "default" : "pointer" }}>
+                <button type="button" disabled={mvRetrying.has(cur.uid) || mvBusy} onClick={() => retryView(cur)} title="Tạo lại góc này"
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.35)", color: "#fff", cursor: (mvRetrying.has(cur.uid) || mvBusy) ? "default" : "pointer", opacity: mvBusy && !mvRetrying.has(cur.uid) ? 0.5 : 1 }}>
                   <RefreshCw className={`w-3.5 h-3.5${mvRetrying.has(cur.uid) ? " animate-spin" : ""}`} /> Tạo lại
                 </button>
                 <a href={cur.img} download={`multiview-${cur.id}.png`} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.35)", color: "#fff" }}>
